@@ -25,6 +25,15 @@ In addition to the game engine, the project includes an early attempt at a moddi
 
 [![OpenKotOR Discord](https://discordapp.com/api/guilds/739590575359262792/widget.png?style=banner2)](https://discord.gg/QxjqVAuN8T)
 
+## Development Roadmap
+
+Check out our comprehensive [Development Roadmap](https://github.com/KobaltBlu/KotOR.js/wiki/Development-Roadmap) to see planned features, current progress, and how you can contribute to the project. The roadmap covers:
+
+- **Phase 1**: KotOR I Feature Parity
+- **Phase 2**: KotOR II Feature Parity  
+- **Phase 3**: Forge Modding Tool Development
+- **Phase 4**: Engine Enhancements & Community Features
+
 ## Supported Games
 The following games are currently supported:
 - [x] [Star Wars: Knights of the Old Republic (PC)](https://en.wikipedia.org/wiki/Star_Wars:_Knights_of_the_Old_Republic)
