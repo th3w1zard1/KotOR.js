@@ -58,6 +58,7 @@ jobs:
 
       - name: Run Blender smoke script
         env:
+          BLENDER_SMOKE_OUTPUT_DIR: ${{ runner.temp }}/kotor_blender_smoke
           KOTORBLENDER_PATH: ${{ github.event_name == 'workflow_dispatch' && inputs.kotorblender_repo != '' && format('{0}/{1}', github.workspace, 'external/kotorblender') || '' }}
           KOTORBLENDER_MODULE: ${{ github.event_name == 'workflow_dispatch' && inputs.kotorblender_module || 'kotorblender' }}
         run: |
@@ -68,7 +69,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: blender-smoke-artifacts
-          path: |
-            /tmp/kotor_blender_smoke
+          path: ${{ runner.temp }}/kotor_blender_smoke
           if-no-files-found: ignore
           retention-days: 7

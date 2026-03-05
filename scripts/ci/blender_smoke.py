@@ -14,12 +14,14 @@ import json
 import os
 import pathlib
 import sys
+import tempfile
 
 import bpy
 
 
 def ensure_smoke_output_dir() -> pathlib.Path:
-    output_dir = pathlib.Path("/tmp/kotor_blender_smoke")
+    output_dir_env = os.environ.get("BLENDER_SMOKE_OUTPUT_DIR", "").strip()
+    output_dir = pathlib.Path(output_dir_env).resolve() if output_dir_env else pathlib.Path(tempfile.mkdtemp(prefix="kotor_blender_smoke_"))
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir
 
