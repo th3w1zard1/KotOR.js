@@ -142,10 +142,6 @@ jobs:
     name: VS Code extension compile
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: extensions/kotor-forge-vscode
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
