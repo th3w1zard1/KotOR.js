@@ -111,7 +111,7 @@ Paths are under `src/` unless noted.
 | Concern | Location | Run / test |
 |---------|----------|------------|
 | Webpack | `webpack.config.js` | `npm run webpack:dev` and `npm run webpack:prod` for config changes |
-| Electron TS | `tsconfig.electron.json`, `main` | `npm run electron:compile` |
+| Electron TS | `tsconfig.electron.json`, `src/electron/index.ts`, `src/electron/preload.ts`, `main.js` | `npm run electron:compile` |
 | Jest | `jest.config.js` | `npm test` — `@/` → `src/` via `moduleNameMapper` |
 
 ### 2) Applications (`src/apps/`)
