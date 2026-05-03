@@ -61,11 +61,11 @@ There is **no remote account** for the engine. “Setup” means **pointing prof
 | **Browser** (launcher / forge / debugger bundles) | `idb-keyval` key `app_settings`, merged with defaults in `ConfigClient` | First run uses defaults; game paths are null until the user picks a directory in the UI. |
 | **Electron** | `ConfigManager` (JSON on disk — see `src/managers/ConfigManager.ts`) | Same logical tree as `ConfigClient` defaults; profile `directory` fields matter for launch. |
 
-**Useful default paths** (from `ConfigClient` defaults — inspect `src/utility/ConfigClient.ts` for the full tree):
+**Useful common config keys** (inspect `src/utility/ConfigClient.ts` for the default tree and related keys):
 
 - `Game.debug.*` — FPS overlay, collision/debug visuals, intro skip, “shipping build” flag, etc.
 - `Profiles.<key>.directory` — per-profile install path (launcher sets via locate flow).
-- `Games.KOTOR.Location` / `Games.TSL.Location` — legacy game roots in defaults object.
+- `Games.KOTOR.Location` / `Games.TSL.Location` — legacy game-root config keys.
 
 **Mocking / toggling for manual QA**: in browser DevTools, after the app loads, you can patch stored settings only if the app exposes that flow; the reliable approach for agents is **unit tests with mocked `CurrentGame` / loaders** or **documented env vars** (this repo rarely uses `process.env` for feature flags — prefer `ConfigClient` / `ConfigManager` keys). When you discover a new toggle, add it under **Maintaining this skill** below.
 
