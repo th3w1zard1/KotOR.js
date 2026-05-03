@@ -24,7 +24,7 @@ From repo root:
 
 ```bash
 node --version   # expect 18+
-npm ci           # preferred; npm install if no lockfile discipline
+npm ci           # clean workspace default; use npm install only when intentionally updating dependencies or package-lock.json
 ```
 
 Default agent validation loop (non-trivial code changes):
