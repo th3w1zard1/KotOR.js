@@ -79,7 +79,7 @@ There is **no remote account** for the engine. “Setup” means **pointing prof
 npm start
 ```
 
-Compiles Electron main (`tsconfig.electron.json`) then launches via `scripts/write-electron-launcher.js`. For main-process watch + restart, use `npm run dev` (see `package.json`).
+Compiles Electron main (`tsconfig.electron.json`) then launches via `scripts/write-electron-launcher.js`. Do **not** use `npm run dev` for Electron main-process watch + restart; that script is for the web/static dev flow. For Electron watch workflows, use the actual Electron scripts from `package.json` such as `npm run start-watch`, `npm run serve:electron`, or `npm run start-watch:debug`, depending on whether you want normal or debug startup.
 
 ### B) Web / static bundles (best for Cloud UI smoke)
 
