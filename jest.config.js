@@ -12,11 +12,9 @@ module.exports = {
       },
     }],
   },
-  testMatch: ['**/*.test.ts'],
-  // Exclude Vitest-only tests that use adapters not in this repo (holocron port)
-  // Exclude editorFindReferences: pulls in GameState -> three/examples/jsm (no types in Node test env)
   testPathIgnorePatterns: [
     '/node_modules/',
+    '<rootDir>/src/tests/',
     'test_rim\\.test\\.ts$',
     'test_gff\\.test\\.ts$',
     'test_erf\\.test\\.ts$',
