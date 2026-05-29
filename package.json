@@ -133,7 +133,7 @@
     "@fortawesome/free-solid-svg-icons": "^7.2.0",
     "@ltd/j-toml": "^1.38.0",
     "@types/jest": "^30.0.0",
-    "axios": "^1.15.0",
+    "axios": "^1.16.0",
     "bootstrap": "^5.3.8",
     "fast-xml-parser": "^5.3.6",
     "jest": "^30.3.0",
