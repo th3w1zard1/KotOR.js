@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import * as path from 'path';
 
 jest.mock('@/managers/KEYManager', () => ({
   KEYManager: {
@@ -107,8 +108,8 @@ describe('ResourceLoader', () => {
 
     const result = await ResourceLoader.searchOverride(ResourceTypes.utc, 'MiXeDRef');
 
-    expect(GameFileSystem.exists).toHaveBeenCalledWith('Override\\mixedref.utc');
-    expect(GameFileSystem.readFile).toHaveBeenCalledWith('Override\\mixedref.utc');
+    expect(GameFileSystem.exists).toHaveBeenCalledWith(path.join('Override', 'mixedref.utc'));
+    expect(GameFileSystem.readFile).toHaveBeenCalledWith(path.join('Override', 'mixedref.utc'));
     expect(result).toBe(data);
   });
 
