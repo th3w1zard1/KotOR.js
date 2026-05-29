@@ -10,10 +10,14 @@
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
+    "ignoreDeprecations": "6.0",
     "module": "CommonJS",
     "moduleResolution": "node",
     "noImplicitAny": false,
     "outDir": "dist/electron",
+    "paths": {
+      "@/*": ["src/*"]
+    },
     "rootDir": "src",
     "removeComments": false,
     "skipLibCheck": true,
