@@ -1,8 +1,11 @@
 import * as path from 'path';
+import pLimit from 'p-limit';
+import { ILoaderProgress, LoaderProgressTracker } from '@/apps/common/loader/LoaderProgress';
 import { GameState } from '@/GameState';
 import { ERFObject } from '@/resource/ERFObject';
 import { ResourceTypes } from '@/resource/ResourceTypes';
 import { RIMObject } from '@/resource/RIMObject';
+import { TwoDAObject } from '@/resource/TwoDAObject';
 import { GameFileSystem } from '@/utility/GameFileSystem';
 import { GamePad, KeyMapper } from '@/controls';
 import { CurrentGame } from '@/engine/CurrentGame';
@@ -55,6 +58,8 @@ import { GameEventFactory } from '@/events/GameEventFactory';
 import { INIConfig } from '@/engine/INIConfig';
 import { CacheScope } from '@/enums';
 import { PerformanceMonitor } from '@/utility/PerformanceMonitor';
+
+const fsLimit = pLimit(16);
 
 /**
  * GameInitializer class.
@@ -143,6 +148,11 @@ export class GameInitializer {
 
   static SetLoadingMessage(message: string) {
     GameInitializer.ProcessEventListener('on-loader-message', [message]);
+    GameInitializer.ProcessEventListener('on-loader-progress', [null]);
+  }
+
+  static SetLoadingProgress(progress: ILoaderProgress) {
+    GameInitializer.ProcessEventListener('on-loader-progress', [progress]);
   }
 
   static async Init(game: GameEngineType) {
@@ -296,27 +306,124 @@ export class GameInitializer {
   }
 
   static async LoadGameResources() {
-    GameInitializer.SetLoadingMessage('Loading Assets');
+    const tracker = new LoaderProgressTracker(
+      (progress) => GameInitializer.SetLoadingProgress(progress),
+      'Loading Assets',
+    );
+
+    const overrideFiles = await GameInitializer.listOverrideFiles();
+    const rimFiles = await GameInitializer.listRimFiles();
+    const twoDAResources = KEYManager.Key.getFilesByResType(ResourceTypes['2da']);
+    const texturePackErfs = await GameInitializer.listTexturePackErfs();
+
+    tracker.begin(
+      overrideFiles.length + rimFiles.length + twoDAResources.length + texturePackErfs.length,
+      'Loading Assets',
+    );
+
     const promises = [
-      GameInitializer.LoadOverride(),
-      GameInitializer.LoadRIMs(),
+      GameInitializer.LoadOverride(tracker, overrideFiles),
+      GameInitializer.LoadRIMs(tracker, rimFiles),
       GameInitializer.LoadModules(),
       GameInitializer.LoadLips(),
-      GameInitializer.Load2DAs(),
-      GameInitializer.LoadTexturePacks(),
+      GameInitializer.Load2DAs(tracker, twoDAResources),
+      GameInitializer.LoadTexturePacks(tracker, texturePackErfs),
+    ];
+    await Promise.all(promises);
+
+    const nonBlockingPromises = [
       GameInitializer.LoadGameAudioResources('streammusic'),
       GameInitializer.LoadGameAudioResources('streamsounds'),
       GameInitializer.LoadGameAudioResources(GameState.GameKey != GameEngineType.TSL ? 'streamwaves' : 'streamvoice'),
     ];
-    await Promise.all(promises);
+    Promise.all(nonBlockingPromises);
   }
 
-  static async LoadRIMs() {
+  static async listOverrideFiles() {
+    try {
+      const files = await GameFileSystem.readdir('Override', { recursive: false });
+      return files
+        .map((f) => {
+          const _parsed = path.parse(f);
+          const ext = _parsed.ext.substr(1, _parsed.ext.length)?.toLocaleLowerCase();
+          return { f, _parsed, resId: ResourceTypes[ext] };
+        })
+        .filter(({ resId }) => typeof resId !== 'undefined');
+    } catch (e) {
+      return [];
+    }
+  }
+
+  static async listRimFiles() {
     if (GameState.GameKey == GameEngineType.TSL) {
+      return [] as { ext: string; name: string; filename: string }[];
+    }
+    try {
+      const filenames = await GameFileSystem.readdir('rims');
+      return filenames
+        .map(function (file: string) {
+          const filename = file.split(path.sep).pop() as string;
+          const args = filename.split('.');
+          return {
+            ext: args[1].toLowerCase(),
+            name: args[0],
+            filename: path.join('rims', filename),
+          };
+        })
+        .filter(function (file_obj) {
+          return file_obj.ext == 'rim';
+        });
+    } catch (e) {
+      return [];
+    }
+  }
+
+  static async listTexturePackErfs() {
+    const data_dir = 'TexturePacks';
+    try {
+      const filenames = await GameFileSystem.readdir(data_dir);
+      return filenames
+        .map(function (file) {
+          const filename = file.split(path.sep).pop() as string;
+          const args = filename.split('.');
+          return {
+            ext: args[1].toLowerCase(),
+            name: args[0],
+            filename: filename,
+          };
+        })
+        .filter(function (file_obj) {
+          return file_obj.ext == 'erf';
+        });
+    } catch (e) {
+      return [];
+    }
+  }
+
+  static async LoadRIMs(
+    tracker?: LoaderProgressTracker,
+    rims?: { ext: string; name: string; filename: string }[],
+  ) {
+    const rimFiles = rims ?? (await GameInitializer.listRimFiles());
+    if (!rimFiles.length) {
       return;
     }
     PerformanceMonitor.start('RIMManager.Load');
-    await RIMManager.Load();
+    await Promise.all(
+      rimFiles.map((rimObj) =>
+        fsLimit(async () => {
+          tracker?.itemStart(path.basename(rimObj.filename));
+          try {
+            const rim = await RIMManager.LoadRIMObject(rimObj);
+            rim.group = 'RIMs';
+          } catch (e) {
+            console.error(e);
+          } finally {
+            tracker?.itemComplete();
+          }
+        }),
+      ),
+    );
     PerformanceMonitor.stop('RIMManager.Load');
   }
 
@@ -408,40 +515,62 @@ export class GameInitializer {
     PerformanceMonitor.stop('GameInitializer.LoadModules');
   }
 
-  static async Load2DAs() {
+  static async Load2DAs(
+    tracker?: LoaderProgressTracker,
+    resources?: ReturnType<typeof KEYManager.Key.getFilesByResType>,
+  ) {
+    const twoDAResources = resources ?? KEYManager.Key.getFilesByResType(ResourceTypes['2da']);
     PerformanceMonitor.start('GameInitializer.Load2DAs');
-    await GameState.TwoDAManager.Load2DATables();
+    TwoDAManager.datatables = new Map();
+    await Promise.all(
+      twoDAResources.map((res) =>
+        fsLimit(async () => {
+          const key = KEYManager.Key.getFileKeyByRes(res);
+          if (!key) {
+            tracker?.itemComplete();
+            return;
+          }
+          tracker?.itemStart(`${key.resRef}.2da`);
+          try {
+            const d = await ResourceLoader.loadResource(ResourceTypes['2da'], key.resRef);
+            TwoDAManager.datatables.set(key.resRef, new TwoDAObject(d));
+          } catch (e) {
+            console.error(e);
+          } finally {
+            tracker?.itemComplete();
+          }
+        }),
+      ),
+    );
     PerformanceMonitor.stop('GameInitializer.Load2DAs');
   }
 
-  static async LoadTexturePacks() {
+  static async LoadTexturePacks(
+    tracker?: LoaderProgressTracker,
+    erfs?: { ext: string; name: string; filename: string }[],
+  ) {
+    const texturePackErfs = erfs ?? (await GameInitializer.listTexturePackErfs());
     PerformanceMonitor.start('GameInitializer.LoadTexturePacks');
     const data_dir = 'TexturePacks';
     try {
-      const filenames = await GameFileSystem.readdir(data_dir);
-      const erfs = filenames
-        .map(function (file) {
-          const filename = file.split(path.sep).pop() as string;
-          const args = filename.split('.');
-          return {
-            ext: args[1].toLowerCase(),
-            name: args[0],
-            filename: filename,
-          };
-        })
-        .filter(function (file_obj) {
-          return file_obj.ext == 'erf';
-        });
-
       await Promise.all(
-        erfs.map(async (_erf) => {
-          const erf = new ERFObject(path.join(data_dir, _erf.filename));
-          await erf.load();
-          if (erf instanceof ERFObject) {
-            erf.group = 'Textures';
-            ERFManager.addERF(_erf.name, erf);
-          }
-        })
+        texturePackErfs.map((_erf) =>
+          fsLimit(async () => {
+            tracker?.itemStart(_erf.filename);
+            try {
+              const erf = new ERFObject(path.join(data_dir, _erf.filename));
+              await erf.load();
+              if (erf instanceof ERFObject) {
+                erf.group = 'Textures';
+                ERFManager.addERF(_erf.name, erf);
+              }
+            } catch (e) {
+              console.error(e);
+            } finally {
+              tracker?.itemComplete();
+            }
+          }),
+        ),
       );
     } catch (e) {
       console.warn('GameInitializer.LoadTexturePacks: Failed to load texture packs');
@@ -478,27 +607,30 @@ export class GameInitializer {
     PerformanceMonitor.stop(`GameInitializer.LoadGameAudioResources[${folder}]`);
   }
 
-  static async LoadOverride() {
+  static async LoadOverride(
+    tracker?: LoaderProgressTracker,
+    validOverrideFiles?: Awaited<ReturnType<typeof GameInitializer.listOverrideFiles>>,
+  ) {
+    const overrideFiles = validOverrideFiles ?? (await GameInitializer.listOverrideFiles());
     PerformanceMonitor.start('GameInitializer.LoadOverride');
     try {
-      const files = await GameFileSystem.readdir('Override', { recursive: false });
-      for (let i = 0, len = files.length; i < len; i++) {
-        const f = files[i];
-        const _parsed = path.parse(f);
-        const ext = _parsed.ext.substr(1, _parsed.ext.length)?.toLocaleLowerCase();
-        const resId = ResourceTypes[ext];
-
-        if (typeof resId === 'undefined') {
-          continue;
-        }
-
-        const buffer = await GameFileSystem.readFile(f);
-        if (!buffer || !buffer.length) {
-          continue;
-        }
-
-        ResourceLoader.setCache(CacheScope.OVERRIDE, resId, _parsed.name.toLocaleLowerCase(), buffer);
-      }
+      await Promise.all(
+        overrideFiles.map(({ f, _parsed, resId }) =>
+          fsLimit(async () => {
+            tracker?.itemStart(path.basename(f));
+            try {
+              const buffer = await GameFileSystem.readFile(f);
+              if (buffer && buffer.length) {
+                ResourceLoader.setCache(CacheScope.OVERRIDE, resId, _parsed.name.toLocaleLowerCase(), buffer);
+              }
+            } catch (e) {
+              console.error(e);
+            } finally {
+              tracker?.itemComplete();
+            }
+          }),
+        ),
+      );
     } catch (e) {
       console.warn('GameInitializer.LoadOverride: Failed to load override');
       console.error(e);

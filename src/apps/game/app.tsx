@@ -13,6 +13,7 @@ export const GameApp = () => {
   const [showCheatConsole] = appContext.showCheatConsole;
   const [showLoadingScreen] = appContext.showLoadingScreen;
   const [loadingScreenMessage] = appContext.loadingScreenMessage;
+  const [loadingScreenProgress] = appContext.loadingScreenProgress;
   const [loadingScreenBackgroundURL] = appContext.loadingScreenBackgroundURL;
   const [loadingScreenLogoURL] = appContext.loadingScreenLogoURL;
   return (
@@ -23,6 +24,7 @@ export const GameApp = () => {
       <LoadingScreen
         active={showLoadingScreen}
         message={loadingScreenMessage}
+        progress={loadingScreenProgress}
         backgroundURL={loadingScreenBackgroundURL}
         logoURL={loadingScreenLogoURL}
       />

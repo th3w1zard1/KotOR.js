@@ -26,6 +26,7 @@ export const App = (props: any) => {
   const [showGrantModal, setShowGrantModal] = appContext.showGrantModal;
   const [showLoadingScreen] = appContext.showLoadingScreen;
   const [loadingScreenMessage] = appContext.loadingScreenMessage;
+  const [loadingScreenProgress] = appContext.loadingScreenProgress;
   const [loadingScreenBackgroundURL] = appContext.loadingScreenBackgroundURL;
   const [loadingScreenLogoURL] = appContext.loadingScreenLogoURL;
   const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -364,6 +365,7 @@ export const App = (props: any) => {
       <LoadingScreen
         active={showLoadingScreen}
         message={loadingScreenMessage}
+        progress={loadingScreenProgress}
         backgroundURL={loadingScreenBackgroundURL}
         logoURL={loadingScreenLogoURL}
       />

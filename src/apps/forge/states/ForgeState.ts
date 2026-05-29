@@ -15,6 +15,7 @@ import { ModalManagerState } from '@/apps/forge/states/modal/ModalManagerState';
 import { MenuTopState } from '@/apps/forge/states/MenuTopState';
 
 import * as KotOR from '@/apps/forge/KotOR';
+import { ILoaderProgress } from '@/apps/common/loader/LoaderProgress';
 import { NWScriptLanguageService } from '@/apps/forge/states/NWScriptLanguageService';
 import { LYTLanguageService } from '@/apps/forge/states/LYTLanguageService';
 import { RecentProject } from '@/apps/forge/RecentProject';
@@ -122,6 +123,12 @@ export class ForgeState {
    */
   static loaderMessage(message: string): void {
     ForgeState.processEventListener('on-loader-message', [message]);
+    ForgeState.processEventListener('on-loader-progress', [null]);
+  }
+
+  static loaderProgress(progress: ILoaderProgress): void {
+    ForgeState.processEventListener('on-loader-message', [progress.message]);
+    ForgeState.processEventListener('on-loader-progress', [progress]);
   }
 
   static async InitializeApp(): Promise<void> {
@@ -137,6 +144,13 @@ export class ForgeState {
       KotOR.GameState.GameKey = KotOR.ApplicationProfile.GameKey;
       KotOR.GameInitializer.AddEventListener('on-loader-message', (message: string) => {
         ForgeState.loaderMessage(message);
+      });
+      KotOR.GameInitializer.AddEventListener('on-loader-progress', (progress: ILoaderProgress | null) => {
+        if (progress) {
+          ForgeState.loaderProgress(progress);
+        } else {
+          ForgeState.processEventListener('on-loader-progress', [null]);
+        }
       });
       KotOR.GameInitializer.Init(KotOR.ApplicationProfile.GameKey).then(async () => {
         await this.initNWScriptParser();
