@@ -8,6 +8,7 @@ import * as KotOR from '@/apps/forge/KotOR';
 import { EditorFileProtocol } from '@/apps/forge/enum/EditorFileProtocol';
 import { ForgeState } from '@/apps/forge/states/ForgeState';
 import { FileBrowserNode } from '@/apps/forge/FileBrowserNode';
+import { LoaderProgressTracker } from '@/apps/common/loader/LoaderProgress';
 
 export class TabResourceExplorerState extends TabState {
   static Resources: FileBrowserNode[] = [];
@@ -63,28 +64,34 @@ export class TabResourceExplorerState extends TabState {
   }
 
   static async GenerateResourceList(state: TabResourceExplorerState) {
-    ForgeState.loaderMessage('Loading [BIFs]...');
-    const bifs = await TabResourceExplorerState.LoadBifs();
-    ForgeState.loaderMessage('Loading [RIMs]...');
-    const rims = await TabResourceExplorerState.LoadRims();
-    ForgeState.loaderMessage('Loading [Modules]...');
-    const modules = await TabResourceExplorerState.LoadModules();
-    ForgeState.loaderMessage('Loading [LIPs]...');
-    const lips = await TabResourceExplorerState.LoadLips();
-    ForgeState.loaderMessage('Loading [Textures]...');
-    const textures = await TabResourceExplorerState.LoadTextures();
-    ForgeState.loaderMessage('Loading [StreamWaves]...');
-    const waves = await TabResourceExplorerState.LoadFolderForFileBrowser('StreamWaves'); //KOTOR
-    ForgeState.loaderMessage('Loading [StreamSounds]...');
-    const sounds = await TabResourceExplorerState.LoadFolderForFileBrowser('StreamSounds'); //KOTOR & TSL
-    ForgeState.loaderMessage('Loading [StreamMusic]...');
-    const music = await TabResourceExplorerState.LoadFolderForFileBrowser('StreamMusic'); //KOTOR & TSL
-    ForgeState.loaderMessage('Loading [StreamVoice]...');
-    const voice = await TabResourceExplorerState.LoadFolderForFileBrowser('StreamVoice'); //TSL
-    ForgeState.loaderMessage('Loading [Override]...');
-    const override = await TabResourceExplorerState.LoadFolderForFileBrowser('Override'); //KOTOR & TSL
-    ForgeState.loaderMessage('Loading [Saves]...');
-    const saves = await TabResourceExplorerState.LoadSaves(); //KOTOR & TSL
+    const tracker = new LoaderProgressTracker(
+      (progress) => ForgeState.loaderProgress(progress),
+      'Building resource explorer...',
+    );
+    tracker.begin(
+      TabResourceExplorerState.countBifs() +
+        TabResourceExplorerState.countRims() +
+        TabResourceExplorerState.countModules() +
+        TabResourceExplorerState.countLips() +
+        TabResourceExplorerState.countTextures(),
+    );
+
+    tracker.setMessage('Loading [BIFs]...');
+    const bifs = await TabResourceExplorerState.LoadBifs(tracker);
+    tracker.setMessage('Loading [RIMs]...');
+    const rims = await TabResourceExplorerState.LoadRims(tracker);
+    tracker.setMessage('Loading [Modules]...');
+    const modules = await TabResourceExplorerState.LoadModules(tracker);
+    tracker.setMessage('Loading [LIPs]...');
+    const lips = await TabResourceExplorerState.LoadLips(tracker);
+    tracker.setMessage('Loading [Textures]...');
+    const textures = await TabResourceExplorerState.LoadTextures(tracker);
+    const waves = await TabResourceExplorerState.LoadFolderForFileBrowser('StreamWaves', tracker);
+    const sounds = await TabResourceExplorerState.LoadFolderForFileBrowser('StreamSounds', tracker);
+    const music = await TabResourceExplorerState.LoadFolderForFileBrowser('StreamMusic', tracker);
+    const voice = await TabResourceExplorerState.LoadFolderForFileBrowser('StreamVoice', tracker);
+    const override = await TabResourceExplorerState.LoadFolderForFileBrowser('Override', tracker);
+    const saves = await TabResourceExplorerState.LoadSaves(tracker);
 
     bifs.sort();
     rims.sort();
@@ -106,7 +113,65 @@ export class TabResourceExplorerState extends TabState {
     return TabResourceExplorerState.Resources;
   }
 
-  static LoadBifs() {
+  static countBifs(): number {
+    let count = 0;
+    KotOR.BIFManager.bifs.forEach(() => {
+      count++;
+    });
+    return count;
+  }
+
+  static countRims(): number {
+    let count = 0;
+    KotOR.RIMManager.RIMs.forEach((rim: KotOR.RIMObject) => {
+      if (rim.group == 'RIMs') {
+        count++;
+      }
+    });
+    return count;
+  }
+
+  static countModules(): number {
+    let count = 0;
+    KotOR.RIMManager.RIMs.forEach((rim: KotOR.RIMObject) => {
+      if (rim.group == 'Module') {
+        count++;
+      }
+    });
+    KotOR.ERFManager.ERFs.forEach((erf: KotOR.ERFObject) => {
+      if (erf.group == 'Module') {
+        count++;
+      }
+    });
+    return count;
+  }
+
+  static countLips(): number {
+    let count = 0;
+    KotOR.RIMManager.RIMs.forEach((rim: KotOR.RIMObject) => {
+      if (rim.group == 'Lips') {
+        count++;
+      }
+    });
+    KotOR.ERFManager.ERFs.forEach((erf: KotOR.ERFObject) => {
+      if (erf.group == 'Lips') {
+        count++;
+      }
+    });
+    return count;
+  }
+
+  static countTextures(): number {
+    let count = 0;
+    KotOR.ERFManager.ERFs.forEach((erf: KotOR.ERFObject) => {
+      if (erf.group == 'Textures') {
+        count++;
+      }
+    });
+    return count;
+  }
+
+  static LoadBifs(tracker?: LoaderProgressTracker) {
     return new Promise<FileBrowserNode>((resolve, reject) => {
       const bifs: KotOR.BIFObject[] = [];
       KotOR.BIFManager.bifs.forEach((bif: KotOR.BIFObject) => {
@@ -124,6 +189,7 @@ export class TabResourceExplorerState extends TabState {
         array: bifs,
         onLoop: (bif: KotOR.BIFObject, asyncLoop: AsyncLoop) => {
           const name = bif.file.split(path.sep).pop()?.split('.')[0];
+          tracker?.itemStart(name || bif.file);
           const subTypes: { [key: string]: FileBrowserNode } = {};
 
           const node: FileBrowserNode = new FileBrowserNode({
@@ -159,6 +225,7 @@ export class TabResourceExplorerState extends TabState {
             );
           }
 
+          tracker?.itemComplete();
           asyncLoop.next();
         },
       });
@@ -174,7 +241,7 @@ export class TabResourceExplorerState extends TabState {
     });
   }
 
-  static LoadRims() {
+  static LoadRims(tracker?: LoaderProgressTracker) {
     return new Promise<FileBrowserNode>((resolve, reject) => {
       const rims: KotOR.RIMObject[] = [];
       KotOR.RIMManager.RIMs.forEach((rim: KotOR.RIMObject) => {
@@ -194,6 +261,7 @@ export class TabResourceExplorerState extends TabState {
         array: rims,
         onLoop: (rim: KotOR.RIMObject, asyncLoop: AsyncLoop) => {
           const name = rim.resource_path.split(path.sep).pop()?.split('.')[0];
+          tracker?.itemStart(name || rim.resource_path);
           const subTypes: { [key: string]: FileBrowserNode } = {};
 
           const node: FileBrowserNode = new FileBrowserNode({
@@ -229,6 +297,7 @@ export class TabResourceExplorerState extends TabState {
             );
           }
 
+          tracker?.itemComplete();
           asyncLoop.next();
         },
       });
@@ -244,7 +313,7 @@ export class TabResourceExplorerState extends TabState {
     });
   }
 
-  static LoadModules() {
+  static LoadModules(tracker?: LoaderProgressTracker) {
     return new Promise<FileBrowserNode>((resolve, reject) => {
       let modules: any[] = [];
 
@@ -285,6 +354,7 @@ export class TabResourceExplorerState extends TabState {
         array: modules,
         onLoop: (rim: KotOR.RIMObject | KotOR.ERFObject, asyncLoop: AsyncLoop) => {
           const name = rim.resource_path.split(path.sep).pop();
+          tracker?.itemStart(name || rim.resource_path);
           const subTypes: { [key: string]: FileBrowserNode } = {};
 
           const node: FileBrowserNode = new FileBrowserNode({
@@ -322,6 +392,7 @@ export class TabResourceExplorerState extends TabState {
             );
           }
 
+          tracker?.itemComplete();
           asyncLoop.next();
         },
       });
@@ -337,7 +408,7 @@ export class TabResourceExplorerState extends TabState {
     });
   }
 
-  static LoadLips() {
+  static LoadLips(tracker?: LoaderProgressTracker) {
     return new Promise<FileBrowserNode>((resolve, reject) => {
       let modules: any[] = [];
 
@@ -378,6 +449,7 @@ export class TabResourceExplorerState extends TabState {
         array: modules,
         onLoop: (rim: KotOR.RIMObject | KotOR.ERFObject, asyncLoop: AsyncLoop) => {
           const name = rim.resource_path.split(path.sep).pop();
+          tracker?.itemStart(name || rim.resource_path);
           const subTypes: { [key: string]: FileBrowserNode } = {};
 
           const node: FileBrowserNode = new FileBrowserNode({
@@ -414,6 +486,7 @@ export class TabResourceExplorerState extends TabState {
             );
           }
 
+          tracker?.itemComplete();
           asyncLoop.next();
         },
       });
@@ -429,7 +502,7 @@ export class TabResourceExplorerState extends TabState {
     });
   }
 
-  static LoadTextures() {
+  static LoadTextures(tracker?: LoaderProgressTracker) {
     return new Promise<FileBrowserNode>((resolve, reject) => {
       const texture_packs: any[] = [];
 
@@ -450,6 +523,7 @@ export class TabResourceExplorerState extends TabState {
         array: texture_packs,
         onLoop: (erf: KotOR.ERFObject, asyncLoop: AsyncLoop) => {
           const name = erf.resource_path.split(path.sep).pop();
+          tracker?.itemStart(name || erf.resource_path);
           const subTypes: { [key: string]: FileBrowserNode } = {};
 
           const node: FileBrowserNode = new FileBrowserNode({
@@ -488,6 +562,7 @@ export class TabResourceExplorerState extends TabState {
             );
           }
 
+          tracker?.itemComplete();
           asyncLoop.next();
         },
       });
@@ -497,7 +572,8 @@ export class TabResourceExplorerState extends TabState {
     });
   }
 
-  static LoadFolderForFileBrowser(folder_name = '') {
+  static LoadFolderForFileBrowser(folder_name = '', tracker?: LoaderProgressTracker) {
+    tracker?.setMessage(`Loading [${folder_name}]...`);
     return new Promise<FileBrowserNode>((resolve, reject) => {
       //Load StreamWaves
       const folder: FileBrowserNode = new FileBrowserNode({
@@ -517,6 +593,7 @@ export class TabResourceExplorerState extends TabState {
           if (!Array.isArray(files)) {
             return;
           }
+          tracker?.addTotal(files.length);
           (folder.nodes as any)._indexes = {};
 
           for (let i = 0; i < files.length; i++) {
@@ -525,6 +602,7 @@ export class TabResourceExplorerState extends TabState {
             parts.shift();
 
             const newfile = parts.pop() || '';
+            tracker?.itemStart(newfile.trim() || file);
             let targetFolder = folder;
 
             for (let i = 0; i < parts.length; i++) {
@@ -556,9 +634,7 @@ export class TabResourceExplorerState extends TabState {
               })
             );
 
-            /*targetFolder.nodeList.sort( (a, b) => {
-            return a.type == 'group' ? 0 : 1;
-          });*/
+            tracker?.itemComplete();
           }
 
           folder.nodes.sort((a: any, b: any) => {
@@ -585,7 +661,8 @@ export class TabResourceExplorerState extends TabState {
     });
   }
 
-  static LoadSaves() {
+  static LoadSaves(tracker?: LoaderProgressTracker) {
+    tracker?.setMessage('Loading [Saves]...');
     return new Promise<FileBrowserNode>(async (resolve) => {
       const savesRoot: FileBrowserNode = new FileBrowserNode({
         name: 'Saves',
@@ -597,8 +674,10 @@ export class TabResourceExplorerState extends TabState {
       try {
         const files = await KotOR.GameFileSystem.readdir('Saves', { recursive: true });
         const saveArchives = files.filter((filepath: string) => filepath.toLowerCase().endsWith('savegame.sav'));
+        tracker?.addTotal(saveArchives.length);
 
         for (const savePath of saveArchives) {
+          tracker?.itemStart(savePath.split(path.sep).pop() || savePath);
           try {
             const erf = new KotOR.ERFObject(savePath);
             await erf.load();
@@ -624,6 +703,8 @@ export class TabResourceExplorerState extends TabState {
             }
           } catch (e) {
             console.error('LoadSaves: failed to load save archive', savePath, e);
+          } finally {
+            tracker?.itemComplete();
           }
         }
 
