@@ -457,7 +457,7 @@ export class NWScriptASTCodeGen {
     }
 
     if (literal.datatype.value === 'string') {
-      return '"' + String(literal.value).replace(/"/g, '\\"') + '"';
+      return '"' + String(literal.value).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
     }
     if (literal.datatype.value === 'float') {
       const val = Number(literal.value);
