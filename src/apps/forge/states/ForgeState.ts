@@ -507,6 +507,7 @@ export class ForgeState {
                 resref: parsed.name, 
                 ext: parsed.ext
               });
+            });
           } else {
             FileTypeManager.onOpenFile({
               path: EditorFile.diskPathToFileURI(file_path) || file_path.replace(/\\/g, '/'),

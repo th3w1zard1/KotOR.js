@@ -403,37 +403,31 @@ export class TabResourceExplorerState extends TabState {
 
           const files = (rim as any)?.keyList ? (rim as any).keyList : (rim.resources as any);
 
-						subTypes[resource.resType].addChildNode(new FileBrowserNode({
-							name: `${resRef}.${KotOR.ResourceTypes.getKeyByValue(resource.resType)}`,
-							type: 'resource',
-							data: {
-								path: EditorFile.referenceURIForArchiveResource(
-                  rim instanceof KotOR.RIMObject ? 'rim' : 'erf',
-                  rim.resource_path,
-                  resRef,
-                  KotOR.ResourceTypes.getKeyByValue(resource.resType) as string,
-                ),
-							}
-						}));
-					}
+          for (let i = 0; i < files.length; i++) {
+            const resource = files[i];
+            const resRef = resource.resRef;
 
             if (subTypes[resource.resType] == undefined) {
               subTypes[resource.resType] = new FileBrowserNode({
                 name: KotOR.ResourceTypes.getKeyByValue(resource.resType),
                 type: 'group',
+                canOrphan: true,
               });
               node.addChildNode(subTypes[resource.resType]);
             }
 
-            subTypes[resource.resType].addChildNode(
-              new FileBrowserNode({
-                name: `${resRef}.${KotOR.ResourceTypes.getKeyByValue(resource.resType)}`,
-                type: 'resource',
-                data: {
-                  path: `${rim instanceof KotOR.RIMObject ? EditorFileProtocol.RIM : EditorFileProtocol.ERF}//game.dir/${rim.resource_path}?resref=${resRef}&restype=${KotOR.ResourceTypes.getKeyByValue(resource.resType)}`,
-                },
-              })
-            );
+            subTypes[resource.resType].addChildNode(new FileBrowserNode({
+              name: `${resRef}.${KotOR.ResourceTypes.getKeyByValue(resource.resType)}`,
+              type: 'resource',
+              data: {
+                path: EditorFile.referenceURIForArchiveResource(
+                  rim instanceof KotOR.RIMObject ? 'rim' : 'erf',
+                  rim.resource_path,
+                  resRef,
+                  KotOR.ResourceTypes.getKeyByValue(resource.resType) as string,
+                ),
+              }
+            }));
           }
 
           asyncLoop.next();

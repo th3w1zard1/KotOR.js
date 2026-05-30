@@ -66,20 +66,6 @@ export class SceneGraphTreeViewManager extends EventListenerModel {
     return object;
   }
 
-  rebuild(){
-
-  private resolveOdysseyObject(object: any): any {
-    if (!object) return undefined;
-    let current = object;
-    while (current) {
-      if (current instanceof OdysseyObject3D && current.odysseyModelNode) {
-        return current;
-      }
-      current = current.parent;
-    }
-    return object;
-  }
-
   rebuild() {
     this.camerasNode.setNodes([]);
     this.lightingNode.setNodes([]);

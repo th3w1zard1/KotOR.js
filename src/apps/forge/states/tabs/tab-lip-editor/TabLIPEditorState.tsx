@@ -242,8 +242,8 @@ export class TabLIPEditorState extends TabState {
                 });
               });
             });
-          });
-        }).catch(reject);
+          })
+          .catch(reject);
       } else {
         reject(new Error('TabLIPEditorState.openFile requires an EditorFile'));
       }
