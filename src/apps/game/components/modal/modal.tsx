@@ -52,9 +52,11 @@ export const KotORModal = ({
     }
   };
 
+  if (!isVisible) return null;
+
   return (
-    isVisible && <div className={`kotor-modal-backdrop ${gameKey} ${className} ${isVisible ? "visible" : ""}`}>
-      <div className="kotor-modal"> 
+    <div className={`kotor-modal-backdrop ${gameKey} ${className} ${isVisible ? "visible" : ""}`}>
+      <div className="kotor-modal">
         <h2 className="modal-heading">{title}</h2>
         <div className="modal-content">{children}</div>
         <div className="modal-actions">
@@ -62,6 +64,6 @@ export const KotORModal = ({
           {enableOk && <button className="modal-button" onClick={handleOk}>{okText}</button>}
         </div>
       </div>
-    )
+    </div>
   );
 };

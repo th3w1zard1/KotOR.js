@@ -159,23 +159,6 @@ export const KeyFrameTimelineComponent = function(props: any){
   })();
   const trackContentHeight = Math.max(trackContentRows * 27, Math.max(panelHeight - 25, 54));
 
-  const timestamps: JSX.Element[] = [];
-  const trackContentRows = (() => {
-    const grouped = new Map<string, number>();
-    for (let i = 0; i < tracks.length; i++) {
-      const n = tracks[i].nodeName;
-      grouped.set(n, (grouped.get(n) || 0) + 1);
-    }
-    let rows = 0;
-    for (const [nodeName, controllerCount] of grouped.entries()) {
-      rows += 1; // node row
-      const expanded = expandedNodes[nodeName] !== false;
-      if (expanded) rows += controllerCount;
-    }
-    return Math.max(rows, 1);
-  })();
-  const trackContentHeight = Math.max(trackContentRows * 27, Math.max(panelHeight - 25, 54));
-
   const onBtnZoomIn = function () {
     tab.keyframeTrackZoomIn();
   };
@@ -226,11 +209,6 @@ export const KeyFrameTimelineComponent = function(props: any){
   const updateSeekerPosition = () => {
     const seekPosition = tab.getCurrentAnimationElapsed() * tab.timelineZoom;
     setSeekPositionLeft(seekPosition);
-  };
-
-  const isKeyframeEvent = (e: React.MouseEvent<HTMLElement>): boolean => {
-    const target = e.target as HTMLElement | null;
-    return !!target?.closest('.keyframe');
   };
 
   const isKeyframeEvent = (e: React.MouseEvent<HTMLElement>): boolean => {
@@ -458,8 +436,6 @@ export const KeyFrameTimelineComponent = function(props: any){
     </div>
   );
 };
-
-}
 
 const TrackTreeTimelineComponent = function(props: any) {
   const tracks: ModelViewerEditableTrack[] = props.tracks;
