@@ -1,17 +1,25 @@
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api.js';
+<<<<<<< HEAD
 declare global {
   interface Window {
     monaco?: typeof monaco;
   }
 }
 (window as Window & { monaco: typeof monaco }).monaco = monaco;
+=======
+(window as any).monaco = monaco;
+import { TXILanguageService } from "@/apps/forge/states/TXILanguageService";
+>>>>>>> upstream/master
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import 'bootstrap';
-import './app.scss';
-import { AppProvider, useApp } from './context/AppContext';
-import * as KotOR from "./KotOR";
-import { App } from './App';
+import "@/apps/forge/app.scss";
+import { AppProvider, useApp } from "@/apps/forge/context/AppContext";
+import * as KotOR from "@/apps/forge/KotOR";
+import { App } from "@/apps/forge/App";
+import { Launcher } from "@/apps/launcher/context/Launcher";
+
+TXILanguageService.initTXILanguage();
 
 const query = new URLSearchParams(window.location.search);
 
@@ -39,6 +47,7 @@ const loadReactApplication = () => {
 }
 
 ( async () => {
+<<<<<<< HEAD
   try {
     await KotOR.ConfigClient.Init();
     const getProfile = () => KotOR.ConfigClient.get(`Profiles.${query.get('key')}`);
@@ -50,6 +59,23 @@ const loadReactApplication = () => {
   } finally {
     loadReactApplication();
   }
+=======
+  await KotOR.ConfigClient.Init();
+  await Launcher.InitProfiles();
+  const getProfile = () => {
+    const rawKey = query.get("key");
+    const validKeys = Object.keys(Launcher.AppProfiles || {});
+    const key =
+      rawKey && validKeys.includes(rawKey) ? rawKey : "kotor";
+    return KotOR.ConfigClient.get(`Profiles.${key}`);
+  };
+
+  KotOR.ApplicationProfile.SetProfile(getProfile());
+  KotOR.ApplicationProfile.InitEnvironment();
+
+  document.body.classList.add(KotOR.ApplicationProfile.GameKey);
+  loadReactApplication();
+>>>>>>> upstream/master
 })();
 
 const plChangeCallback = (_e: Event): void => {

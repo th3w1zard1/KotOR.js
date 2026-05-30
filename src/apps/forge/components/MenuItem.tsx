@@ -1,6 +1,6 @@
-import React, { ComponentProps, ReactEventHandler, useState } from "react";
-import { Container, Dropdown, Nav, NavDropdown, Navbar } from 'react-bootstrap';
-import { useEffectOnce } from "../helpers/UseEffectOnce";
+import React, { useState } from "react";
+import { Dropdown, Nav, NavDropdown } from 'react-bootstrap';
+import { useEffectOnce } from "@/apps/forge/helpers/UseEffectOnce";
 
 export const MenuItem = function(props: any){
   const item = props.item;
@@ -30,14 +30,37 @@ export const MenuItem = function(props: any){
 
   if (!item) return null;
 
+  const renderItemName = () => {
+    return (
+      <span className="dropdown-item-name-wrapper">
+        <span className="dropdown-item-name">{item.checked ? "✓ " : ""}{item.name}</span>
+      </span>
+    );
+  };
+
   if(item.type === 'separator' || item.type === 'sep'){
     return (
       <Dropdown.Divider></Dropdown.Divider>
     );
+<<<<<<< HEAD
   }else if(item.items?.length){
     return (
       <NavDropdown title={item.name}>
         {item.items.map((child: any, i: number) =>
+=======
+  }else if(item.type === 'title'){
+    return (
+      <Dropdown.Header className="forge-menu-title">{item.name}</Dropdown.Header>
+    );
+  }else if(item.items.length){
+    return (
+      <NavDropdown
+        title={item.name}
+        drop={parent ? 'end' : 'down'}
+        className={parent ? 'forge-menu-submenu' : 'forge-menu-root-item'}
+      >
+        {item.items.map((child: any, i: any) => 
+>>>>>>> upstream/master
           (
             <MenuItem key={`menu-item-${child?.uuid ?? child?.name ?? i}`} item={child} parent={item}></MenuItem>
           )
@@ -46,11 +69,11 @@ export const MenuItem = function(props: any){
     );
   }else if(parent){
     return (
-      <NavDropdown.Item onClick={onClick}>{item.name}</NavDropdown.Item>
+      <NavDropdown.Item onClick={onClick}>{renderItemName()}</NavDropdown.Item>
     );
   }else{
     return (
-      <Nav.Link onClick={onClick}>{item.name}</Nav.Link>
+      <Nav.Link onClick={onClick}>{renderItemName()}</Nav.Link>
     );
   }
 }

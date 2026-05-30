@@ -1,6 +1,15 @@
 # Dependencies
 node_modules/
+<<<<<<< HEAD
 package-lock.json
+=======
+release/
+/settings.json
+crash.log
+npm-debug.log
+*.gypi
+backup/
+>>>>>>> upstream/master
 
 # Build outputs
 dist/
@@ -50,6 +59,7 @@ settings.json
 projects/
 Saves/
 tests/
+<<<<<<< HEAD
 backup/
 scratch/
 *.gypi
@@ -64,3 +74,18 @@ scratch/
 *.temp
 .cache/
 .history/
+=======
+# src/**/*.js
+dist/
+debug.log
+docs/
+coverage/
+scratch/
+research/
+.history/
+extensions/
+.npm-cache/
+.vscode/mcp.json
+.vscode/chrome-debug-profile/
+agentdecompile_projects/
+>>>>>>> upstream/master

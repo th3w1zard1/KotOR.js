@@ -7,6 +7,7 @@
 ![Node JS](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![NPM](https://img.shields.io/badge/npm-CB3837?style=for-the-badge&logo=npm&logoColor=white)
 ![Webpack](https://img.shields.io/badge/Webpack-8DD6F9?style=for-the-badge&logo=Webpack&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 
 ![KotOR.js](https://raw.githubusercontent.com/KobaltBlu/KotOR.js/master/src/assets/icons/icon.png)
 
@@ -25,7 +26,7 @@ In addition to the game engine, the project includes an early attempt at a moddi
 [Discussion Thread](https://deadlystream.com/topic/6608-wip-kotor-js-a-game-engine-for-k1-k2-written-in-javascript/)
 [KotOR.js Youtube Channel](https://www.youtube.com/channel/UC7b4RL2mj0WJ7fEvbJePDbA)
 
-[![OpenKotOR Discord](https://discordapp.com/api/guilds/739590575359262792/widget.png?style=banner2)](https://discord.gg/QxjqVAuN8T)
+[![OpenKotOR Discord](https://discordapp.com/api/guilds/739590575359262792/widget.png?style=banner2)](https://discord.gg/cxuF4xRD66)
 
 ## Supported Games
 
@@ -40,6 +41,8 @@ You will need a valid copy of either KotOR I or KotOR II installed on your syste
 
 ## Web Compatibility (NEW)
 
+[Browser Compatibility Table](https://github.com/KobaltBlu/KotOR.js/wiki/Browser-Support)
+
 The recent transition to TypeScript has brought many improvements to the codebase, including Chrome support. When the project is compiled, the contents of the `dist` folder can be uploaded to a web server. The only requirement is that the site must be accessed from behind a valid SSL certificate. Using the latest version of Chrome is recommended.
 
 [![Demo Icon]][Demo Link]
@@ -47,6 +50,7 @@ The recent transition to TypeScript has brought many improvements to the codebas
 [Demo Link]: https://play.swkotor.net/ 'Online Playable Demo'
 [Demo Icon]: https://img.shields.io/badge/Online_Playable_Demo-37a779?style=for-the-badge&logoColor=white&logo=google-chrome
 
+<<<<<<< HEAD
 ## Getting Started
 
 ### Prerequisites
@@ -74,10 +78,19 @@ cd KotOR.js
 ```
 
 1. **Install dependencies**:
+=======
+## Getting Started (Developer)
+
+### Prerequisites
+1. Download and install [Node.js / npm](https://www.npmjs.com/get-npm).
+2. Clone the KotOR.js repository.
+3. Install dependencies:
+>>>>>>> upstream/master
 
 ```bash
 npm install
 ```
+<<<<<<< HEAD
 
 1. **Start development build** (in one terminal):
 
@@ -86,11 +99,21 @@ npm run webpack:dev-watch
 ```
 
 1. **Start the application** (in another terminal):
+=======
+
+---
+
+### Running the App
+
+#### Option A — Desktop app (Electron) — most common
+This compiles the TypeScript and launches the Electron desktop window. Run this if you just want to play/test the game locally.
+>>>>>>> upstream/master
 
 ```bash
 npm start
 ```
 
+<<<<<<< HEAD
 1. **Enjoy!** The Electron application should launch automatically.
 
 ### Available Scripts
@@ -170,6 +193,101 @@ Key topics covered:
 - **Discussion Thread**: [DeadlyStream Forum](https://deadlystream.com/topic/6608-wip-kotor-js-a-game-engine-for-k1-k2-written-in-javascript/)
 - **GitHub Issues**: For bug reports and feature requests
 - **Documentation**: Check the `wiki/` directory for API docs (generate with `npm run typedoc`)
+=======
+> **Hot-reload variant:** Watches for TypeScript changes and auto-restarts Electron on save:
+> ```bash
+> npm run start-watch
+> ```
+
+---
+
+#### Option B — Browser / web dev (Webpack + local server)
+Use this when you're working on the web frontend (Launcher, Game, Forge, Debugger views) and want to open them in Chrome.
+
+**Step 1 — Build and watch for changes** (keeps running, recompiles on save):
+```bash
+npm run webpack:dev-watch
+```
+This compiles five bundles in parallel to the `dist/` folder:
+- `KotOR.js` — core engine library
+- `dist/launcher/` — game launcher UI
+- `dist/game/` — in-browser game client
+- `dist/forge/` — KotOR Forge modding tool
+- `dist/debugger/` — script debugger
+
+**Step 2 — Serve the output** (in a separate terminal):
+```bash
+npm run serve
+```
+Starts a static file server at **http://localhost:8080**. Then open one of these in Chrome:
+
+| URL | What it is |
+|---|---|
+| http://localhost:8080 | Redirects to Launcher |
+| http://localhost:8080/launcher/ | Game Launcher |
+| http://localhost:8080/game/?key=kotor | KotOR I in-browser |
+| http://localhost:8080/game/?key=tsl | KotOR II in-browser |
+| http://localhost:8080/forge/ | KotOR Forge modding tool |
+| http://localhost:8080/debugger/ | Script debugger |
+
+**Shortcut — run both at once:**
+```bash
+npm run dev
+```
+Runs `webpack:dev-watch` and `serve` in parallel with a single command.
+
+---
+
+#### Option C — VS Code launch configurations
+If you're using VS Code, press **F5** (Run & Debug) and pick a configuration. VS Code will automatically start the `serve: dist` background task and open Chrome pointed at the right URL:
+
+- **KotOR Launcher** — opens the launcher at localhost:8080
+- **KotOR** — opens the KotOR I game client
+- **TSL** — opens the KotOR II game client
+- **KotOR Forge** — opens the Forge modding tool
+- **KotOR Debugger** — opens the script debugger
+
+> Make sure you've already run `npm run webpack:dev-watch` (or `npm run dev`) so `dist/` has been built before pressing F5.
+
+---
+
+### Docker
+
+This project can be containerized as a static web app.
+
+Build the image:
+
+```bash
+docker build -t kotor-js-web .
+```
+
+Run it:
+
+```bash
+docker run --rm -p 8080:80 kotor-js-web
+```
+
+Then open:
+
+- `http://localhost:8080/` (Launcher)
+
+Notes:
+
+- The Docker image uses a multi-stage build (`node:alpine` -> `nginx:alpine`).
+- It runs the same production build as local web output: `npm run webpack:prod`.
+
+---
+
+### Other Commands
+
+| Command | What it does |
+|---|---|
+| `npm run webpack:dev` | One-shot development build (no watch) |
+| `npm run webpack:prod` | Production build (minified, no source maps) |
+| `npm run electron:compile` | Compile only the Electron main process TypeScript |
+| `npm run test` | Run the Jest test suite |
+| `npm run typedoc` | Generate API docs into the `wiki/` folder |
+>>>>>>> upstream/master
 
 ## Screenshots
 

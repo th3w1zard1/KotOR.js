@@ -1,14 +1,9 @@
 // =============================================================================
-// IMPORTS
+// IMPORTS — vendor + design tokens + layouts (single global entry for Forge)
 // =============================================================================
 
-// Import our variables first
 @import "styles/variables";
-
-// Override Bootstrap variables before importing Bootstrap
 @import "styles/bootstrap-overrides";
-
-// Now import Bootstrap with our overrides applied
 @import "~bootstrap/scss/bootstrap";
 
 $fa-font-path: "./fonts";
@@ -22,6 +17,7 @@ $fa-font-path: "./fonts";
 @import "styles/component-keyframe.scss";
 @import "react-contexify/ReactContexify.css";
 
+<<<<<<< HEAD
 // =============================================================================
 // FONT FACES
 // =============================================================================
@@ -1543,3 +1539,16 @@ input[type="range"].volume:before {
 @import 'styles/audio-player.scss';
 @import "styles/keyframe-track.scss";
 @import "styles/UI3DToolPalette.scss";
+=======
+@import "styles/global/fonts";
+@import "styles/global/base";
+@import "styles/global/top-menu";
+@import "styles/global/renderer";
+@import "styles/global/forms";
+@import "styles/global/buttons-tree";
+@import "styles/global/modals";
+@import "styles/global/nav-tabs-wizard";
+@import "styles/global/misc";
+@import "styles/theme/tsl";
+@import "styles/global/model-viewer-properties";
+>>>>>>> upstream/master

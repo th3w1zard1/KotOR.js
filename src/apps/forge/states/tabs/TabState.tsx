@@ -1,19 +1,26 @@
 import React from "react";
+<<<<<<< HEAD
 import { EditorFile, EditorFileEventListenerTypes } from "../../EditorFile";
 import BaseTabStateOptions from "../../interfaces/BaseTabStateOptions";
 import type { EditorTabManager } from "../../managers/EditorTabManager";
 import { GetNewTabID } from "../../managers/TabIdGenerator";
+=======
+import { EditorFile, EditorFileEventListenerTypes } from "@/apps/forge/EditorFile";
+import BaseTabStateOptions from "@/apps/forge/interfaces/BaseTabStateOptions";
+import { EditorTabManager } from "@/apps/forge/managers/EditorTabManager";
+import { ForgeState } from "@/apps/forge/states/ForgeState";
+>>>>>>> upstream/master
 import * as fs from "fs";
-import { EventListenerModel } from "../../EventListenerModel";
-import { supportedFileDialogTypes, supportedFilePickerTypes } from "../../ForgeFileSystem";
+import { EventListenerModel } from "@/apps/forge/EventListenerModel";
+import { supportedFileDialogTypes, supportedFilePickerTypes } from "@/apps/forge/ForgeFileSystem";
 
-import * as KotOR from "../../KotOR";
-import { TabStoreState } from "../../interfaces/TabStoreState";
-import { pathParse } from "../../helpers/PathParse";
+import * as KotOR from "@/apps/forge/KotOR";
+import { TabStoreState } from "@/apps/forge/interfaces/TabStoreState";
+import { pathParse } from "@/apps/forge/helpers/PathParse";
 declare const dialog: any;
 
 export type TabStateEventListenerTypes =
-  'onTabDestroyed'|'onTabRemoved'|'onTabShow'|'onTabHide'|'onTabNameChange'|'onEditorFileLoad'|'onEditorFileChange'|'onEditorFileSaved'|'onKeyDown'|'onKeyUp';
+  'onTabDestroyed'|'onTabRemoved'|'onTabShow'|'onTabHide'|'onTabNameChange'|'onEditorFileLoad'|'onEditorFileChange'|'onEditorFileSaved'|'onKeyDown'|'onKeyUp'|'onUndoApplied'|'onRedoApplied';
 
 export interface TabStateEventListeners {
   onTabDestroyed: Function[],
@@ -26,6 +33,8 @@ export interface TabStateEventListeners {
   onEditorFileSaved: Function[],
   onKeyDown: Function[],
   onKeyUp: Function[],
+  onUndoApplied: Function[],
+  onRedoApplied: Function[],
 }
 
 export class TabState extends EventListenerModel {
@@ -50,6 +59,83 @@ export class TabState extends EventListenerModel {
   #_onNameChanged: (file: EditorFile) => void;
   #_onKeyDown: (e: KeyboardEvent) => void;
   #_onKeyUp: (e: KeyboardEvent) => void;
+
+  /** Undo/redo snapshot stacks. Subclasses store whatever type they need. */
+  protected undoStack: any[] = [];
+  protected redoStack: any[] = [];
+  protected suppressUndoCapture: boolean = false;
+
+  /**
+   * Push the current state onto the undo stack before making a change.
+   * Subclasses must override `captureUndoState()` to return the current
+   * snapshot. Clears the redo stack on every new change.
+   */
+  captureUndoSnapshot(): void {
+    if (this.suppressUndoCapture) return;
+    const state = this.captureUndoState();
+    if (state === undefined) return;
+    this.undoStack.push(state);
+    this.redoStack = [];
+  }
+
+  /** Return the current state as a snapshot. Override in subclasses. */
+  protected captureUndoState(): any {
+    return undefined;
+  }
+
+  /** Restore a snapshot produced by `captureUndoState`. Override in subclasses. */
+  protected applyUndoState(_state: any): void {
+    // subclass responsibility
+  }
+
+  undo(): void {
+    if (this.undoStack.length === 0) return;
+    const current = this.captureUndoState();
+    if (current !== undefined) {
+      this.redoStack.push(current);
+    }
+    const snapshot = this.undoStack.pop()!;
+    this.suppressUndoCapture = true;
+    this.applyUndoState(snapshot);
+    this.suppressUndoCapture = false;
+    this.processEventListener('onUndoApplied', [snapshot]);
+  }
+
+  redo(): void {
+    if (this.redoStack.length === 0) return;
+    const current = this.captureUndoState();
+    if (current !== undefined) {
+      this.undoStack.push(current);
+    }
+    const snapshot = this.redoStack.pop()!;
+    this.suppressUndoCapture = true;
+    this.applyUndoState(snapshot);
+    this.suppressUndoCapture = false;
+    this.processEventListener('onRedoApplied', [snapshot]);
+  }
+
+  clearUndoHistory(): void {
+    this.undoStack = [];
+    this.redoStack = [];
+  }
+
+  /**
+   * Return `true` if the base class should handle Ctrl+Z / Ctrl+Y for this
+   * key event. Override to return `false` when another element (e.g. Monaco
+   * editor) should handle undo/redo natively for that event.
+   * Default: returns `true` only if `captureUndoState()` is overridden.
+   */
+  protected shouldHandleUndoKeyboard(_e: KeyboardEvent): boolean {
+    return this.captureUndoState() !== undefined || this.undoStack.length > 0 || this.redoStack.length > 0;
+  }
+
+  get canUndo(): boolean {
+    return this.undoStack.length > 0;
+  }
+
+  get canRedo(): boolean {
+    return this.redoStack.length > 0;
+  }
 
   constructor(options: BaseTabStateOptions = {}){
     super();
@@ -92,6 +178,22 @@ export class TabState extends EventListenerModel {
     }
 
     this.#_onKeyDown = (e: KeyboardEvent) => {
+      if((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'w'){
+        if(this.isClosable){
+          e.preventDefault();
+          this.remove();
+          return;
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && this.shouldHandleUndoKeyboard(e)) {
+        if (e.key === 'z') {
+          e.preventDefault();
+          if (e.shiftKey) { this.redo(); } else { this.undo(); }
+        } else if (e.key === 'y') {
+          e.preventDefault();
+          this.redo();
+        }
+      }
       this.processEventListener('onKeyDown', [e, this]);
     };
 
@@ -120,11 +222,7 @@ export class TabState extends EventListenerModel {
   editorFileUpdated(){
     if(this.file instanceof EditorFile){
       console.log('editor file updated', this.file.resref, this.file.ext, this.file)
-      if(this.file.unsaved_changes){
-        this.setTabName(`${this.file.resref}.${this.file.ext} *`);
-      }else{
-        this.setTabName(`${this.file.resref}.${this.file.ext}`);
-      }
+      this.setTabName(`${this.file.resref}.${this.file.ext}`);
     }
   }
 
@@ -183,6 +281,9 @@ export class TabState extends EventListenerModel {
 
   remove(){
     this.visible = false;
+    if(ForgeState.project && this.file instanceof EditorFile){
+      ForgeState.project.removeFromOpenFileList(this.file);
+    }
     this.#tabManager.removeTab(this);
     this.processEventListener('onTabRemoved', [this]);
   }
@@ -352,6 +453,11 @@ export class TabState extends EventListenerModel {
                 // this.file.removeEventListener<EditorFileEventListenerTypes>('onSaveStateChanged', this.#_onSaveStateChanged);
                 // this.file.removeEventListener<EditorFileEventListenerTypes>('onNameChanged', this.#_onNameChanged);
                 this.file = currentFile;
+                // Preserve original in recent files before mutating (Save As replaces the file object's path)
+                const originalPath = currentFile.getPath();
+                if(originalPath){
+                  ForgeState.addRecentFile(EditorFile.From(currentFile));
+                }
                 currentFile.setPath(savePath.filePath);
                 currentFile.archive_path = undefined;
                 currentFile.archive_path2 = undefined;
@@ -371,10 +477,15 @@ export class TabState extends EventListenerModel {
             types: this.getSaveTypes(),
           });
           if(newHandle){
+            // Preserve original in recent files before mutating (Save As replaces the file object's path)
+            const originalPath = currentFile.getPath();
+            if(originalPath){
+              ForgeState.addRecentFile(EditorFile.From(currentFile));
+            }
             currentFile.handle = newHandle;
             try{
               const pathInfo = pathParse(newHandle.name);
-              currentFile.setPath(`file://system.dir/${newHandle.name}`);
+              currentFile.setPath(EditorFile.referenceURIForSystemVirtualName(newHandle.name));
               const saveBuffer = await this.getExportBuffer(pathInfo.name, pathInfo.ext);
               const ws: FileSystemWritableFileStream = await newHandle.createWritable();
               await ws.write(saveBuffer as any || new Uint8Array(0) as any);

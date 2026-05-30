@@ -1,11 +1,44 @@
 {
   "compilerOptions": {
+<<<<<<< HEAD
+=======
+    "baseUrl": ".",
+    "moduleResolution": "node",
+    "target": "ESNext",
+    "module": "commonjs",
+    "declaration": false,
+    "noImplicitAny": true,
+    "removeComments": true,
+    "experimentalDecorators": true,
+    "rootDir": ".",
+    "sourceMap": false,
+    "listFiles": true,
+    "newLine": "LF",
+    "noEmitOnError": true,
+    "strictNullChecks": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+>>>>>>> upstream/master
     "allowJs": true,
     "declaration": false,
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
     "jsx": "react",
+<<<<<<< HEAD
+=======
+    "paths": {
+      "@/*": [
+        "src/*"
+      ]
+    },
+    "types": [
+      "@types/wicg-file-system-access",
+      "user-agent-data-types",
+      "node",
+      "offscreencanvas",
+    ],
+>>>>>>> upstream/master
     "lib": [
       "ESNext",
       "dom",
@@ -32,6 +65,7 @@
       "offscreencanvas",
     ]
   },
+<<<<<<< HEAD
   "exclude": [
     "node_modules",
     "src/**/*.spec.ts"
@@ -41,4 +75,8 @@
     "src/types",
     "src/index.d.ts"
   ]
+=======
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/index.d.ts"],
+  "exclude": ["node_modules", "src/**/*.spec.ts"]
+>>>>>>> upstream/master
 }
