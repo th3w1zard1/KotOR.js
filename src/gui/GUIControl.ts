@@ -203,11 +203,6 @@ export class GUIControl {
     }
   }
   
-  constructor(menu: GameMenu, control: GFFStruct, parent: GUIControl|undefined, scale: boolean = false){
-
-  /** When true, the control will be rebuilt on the next update. */
-  needsUpdate: boolean = false;
-
   constructor(menu: GameMenu, control: GFFStruct, parent: GUIControl | undefined, scale: boolean = false) {
     this.menu = menu;
     this.control = control;

@@ -9,8 +9,6 @@ import { ForgeCheckbox } from "@/apps/forge/components/forge-checkbox/forge-chec
 import { InfoBubble } from "@/apps/forge/components/info-bubble/info-bubble";
 import { ForgeWaypoint } from "@/apps/forge/module-editor/ForgeWaypoint";
 
-export const TabUTWEditor = function(props: BaseTabProps){
-
 export const TabUTWEditor = function (props: BaseTabProps) {
   const tab: TabUTWEditorState = props.tab as TabUTWEditorState;
   const [selectedTab, setSelectedTab] = useState<string>('basic');

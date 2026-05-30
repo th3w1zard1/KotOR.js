@@ -56,12 +56,6 @@ function applyDanglyWindPowerUniform(material: THREE.Material, wind: number): vo
   if (u) u.value = wind;
 }
 
-function applyDanglyWindPowerUniform(material: THREE.Material, wind: number): void {
-  if (!(material instanceof THREE.ShaderMaterial)) return;
-  const u = material.uniforms?.danglyWindPower;
-  if (u) u.value = wind;
-}
-
 /**
  * OdysseyModel3D class.
  *

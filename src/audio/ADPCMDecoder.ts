@@ -210,37 +210,9 @@ export class ADPCMDecoder {
 		this.stepIdx[0] = sidx0;
 	}
 
-    let diff = step >> 3;
-    if (bytecode & 1) diff += step >> 2;
-    if (bytecode & 2) diff += step >> 1;
-    if (bytecode & 4) diff += step;
-    if (bytecode & 8) diff = -diff;
-
-    predictor += diff;
-
-    predictor = ADPCMDecoder.CLAMP(predictor, -32768, 32767);
-
-    this.stepIdx[channel] += ADPCMDecoder.stepIdxTable[bytecode];
-    this.stepIdx[channel] = ADPCMDecoder.CLAMP(this.stepIdx[channel], 0, 88);
-
-    this.predictor[channel] = predictor;
-
-    return predictor;
-  }
-
   static CLAMP(value: any, min: number, max: number) {
     return Math.min(Math.max(parseInt(value), min), max);
   }
-
-		this.predictor[channel] = predictor;
-
-		return predictor;
-
-	}
-
-	static CLAMP(value: any, min: number, max: number){
-		return Math.min(Math.max(value, min), max);
-	}
 
 	static stepIdxTable: number[] = [ 
 			-1, -1, -1, -1,		/* +0 - +3, decrease the step size */

@@ -58,49 +58,6 @@ export const MenuBar: React.FC<MenuBarProps> = ({ items }) => {
     if (item.onClick) {
       item.onClick();
     }
-  }, []);
-
-  const scheduleSubmenuClose = useCallback(
-    (path: string) => {
-      cancelPendingSubmenuClose();
-      submenuCloseTimerRef.current = setTimeout(() => {
-        submenuCloseTimerRef.current = null;
-        setOpenSubmenu((prev) => (prev === path ? null : prev));
-      }, SUBMENU_CLOSE_DELAY_MS);
-    },
-    [cancelPendingSubmenuClose]
-  );
-
-  useEffect(() => {
-    return () => cancelPendingSubmenuClose();
-  }, [cancelPendingSubmenuClose]);
-
-  const handleMenuClick = useCallback(
-    (label?: string) => {
-      setOpenMenu((prev) => (prev === label ? null : (label ?? null)));
-      setOpenSubmenu(null);
-      cancelPendingSubmenuClose();
-    },
-    [cancelPendingSubmenuClose]
-  );
-
-  const handleItemClick = useCallback(
-    (item: MenuItem) => {
-      if (item.children) {
-        return; // Don't close menu if it has children
-      }
-      if (item.onClick) {
-        item.onClick();
-      }
-      setOpenMenu(null);
-      setOpenSubmenu(null);
-      cancelPendingSubmenuClose();
-    },
-    [cancelPendingSubmenuClose]
-  );
-
-  const closeAllMenus = useCallback(() => {
-    cancelPendingSubmenuClose();
     setOpenMenu(null);
     setOpenSubmenu(null);
     cancelPendingSubmenuClose();

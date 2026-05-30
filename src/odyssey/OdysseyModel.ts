@@ -83,14 +83,6 @@ export class OdysseyModel {
         );
       }
     }
-
-  /** Banner / optional geometry fields preserved when loading from {@link OdysseyModel.fromAscii}. */
-  asciiCompressQuaternions?: number;
-  asciiHeadLink?: number;
-  /** MDLedit `layoutposition` (beginmodelgeom). */
-  asciiLayoutPosition?: { x: number; y: number; z: number };
-
-  constructor(mdlReader: BinaryReader, mdxReader: BinaryReader) {
     this.mdlReader = mdlReader;
     this.mdxReader = mdxReader;
 

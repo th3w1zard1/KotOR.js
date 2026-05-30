@@ -13,8 +13,6 @@ import { createGFFContextMenuItems } from "@/apps/forge/components/tabs/tab-gff-
 
 import "@/apps/forge/components/tabs/tab-gff-editor/TabGFFEditor.scss";
 
-export const TabGFFEditor = function(props: BaseTabProps){
-
 export const TabGFFEditor = function (props: BaseTabProps) {
   const tab: TabGFFEditorState = props.tab as TabGFFEditorState;
   const [gff, setGFF] = useState<KotOR.GFFObject>();

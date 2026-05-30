@@ -109,18 +109,24 @@ export class ForgeFileSystem {
           if(handles.length){
             resolve({
               type: ForgeFileSystemResponseType.FILE_SYSTEM_HANDLE,
-              handles: [],
+              handles: handles,
               multiple: options.multiple,
             });
-          })
-          .catch((e: any) => {
+            return;
+          }
+          resolve({
+            type: ForgeFileSystemResponseType.FILE_SYSTEM_HANDLE,
+            handles: [],
+            multiple: options.multiple,
+          });
+        }).catch((e: any) => {
             console.error(e);
             resolve({
               type: ForgeFileSystemResponseType.FILE_SYSTEM_HANDLE,
               handles: [],
               multiple: options.multiple,
             });
-          });
+        });
       }
     });
   }

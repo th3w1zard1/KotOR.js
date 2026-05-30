@@ -564,15 +564,7 @@ export class TabResourceExplorerState extends TabState {
               targetFolder = targetFolder.nodes[index];
             }
           }
-          return KotOR.GameFileSystem.readdir(folder_name, { recursive: true });
-        })
-        .then((files: string[] | void) => {
-          if (!Array.isArray(files)) {
-            return;
-          }
-          (folder.nodes as any)._indexes = {};
-
-          targetFolder.addChildNode( 
+          targetFolder.addChildNode(
             new FileBrowserNode({
               name: newfile.trim(),
               type: 'resource',
@@ -580,43 +572,7 @@ export class TabResourceExplorerState extends TabState {
               nodes: [],
             })
           );
-
-            const newfile = parts.pop() || '';
-            let targetFolder = folder;
-
-            for (let i = 0; i < parts.length; i++) {
-              if (typeof (targetFolder.nodes as any)._indexes[parts[i]] === 'undefined') {
-                //Push the new folder and get the index
-                const index =
-                  targetFolder.addChildNode(
-                    new FileBrowserNode({
-                      name: parts[i].trim(),
-                      type: 'group',
-                      nodes: [],
-                    })
-                  ) - 1;
-                (targetFolder.nodes as any)._indexes[parts[i]] = index;
-                targetFolder = targetFolder.nodes[index];
-                (targetFolder.nodes as any)._indexes = {};
-              } else {
-                const index = (targetFolder.nodes as any)._indexes[parts[i]];
-                targetFolder = targetFolder.nodes[index];
-              }
-            }
-
-            targetFolder.addChildNode(
-              new FileBrowserNode({
-                name: newfile.trim(),
-                type: 'resource',
-                data: { path: `${EditorFileProtocol.FILE}//game.dir/${files[i]}` },
-                nodes: [],
-              })
-            );
-
-            /*targetFolder.nodeList.sort( (a, b) => {
-            return a.type == 'group' ? 0 : 1;
-          });*/
-          }
+        }
 
           folder.nodes.sort((a: any, b: any) => {
             const compareType = a.type == 'group' && b.type != 'group' ? -1 : 1;

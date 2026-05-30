@@ -410,7 +410,8 @@ export const TabImageViewer = function (props: BaseTabProps) {
       </div>
     ) : (
       <></>
-    );
+    )
+  );
 
   return (
     <>

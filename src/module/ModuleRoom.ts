@@ -684,9 +684,6 @@ export class ModuleRoom extends ModuleObject {
     const FB = new THREE.Vector3();
     const FC = new THREE.Vector3();
     
-    for(let i = 0; i < grassFaces.length; i++){
-      const face = grassFaces[i];
-
     for (let i = 0; i < grassFaces.length; i++) {
       const face = grassFaces[i];
 
