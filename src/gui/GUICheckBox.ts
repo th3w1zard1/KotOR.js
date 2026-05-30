@@ -8,8 +8,8 @@ import { OdysseyTexture } from '@/three/odyssey/OdysseyTexture';
 import { GameState } from '@/GameState';
 import { IGUIControlBorder } from '@/interface/gui/IGUIControlBorder';
 // import { ShaderManager } from "@/managers";
-import { GUIControlTypeMask } from '@/enums/gui/GUIControlTypeMask';
-import { GUIControlType } from '@/enums/gui/GUIControlType';
+import { GUIControlTypeMask } from "@/enums/gui/GUIControlTypeMask";
+import { GUIControlType } from "@/enums/gui/GUIControlType";
 
 /**
  * GUICheckBox class.

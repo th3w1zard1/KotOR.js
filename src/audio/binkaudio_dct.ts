@@ -1,6 +1,6 @@
-import { BitReaderLE } from '@/video/BitReaderLE';
+import { BitReaderLE } from "@/video/BitReaderLE";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const FFTCtor = require('fft.js');
+const FFTCtor = require("fft.js");
 
 /**
  * BinkAudioDCTDecoder class.
@@ -277,7 +277,7 @@ export class BinkAudioDCTDecoder {
   private idctIIIFFT(X: Float32Array, out: Float32Array): void {
     const N = this.frameLen;
     const fftIn = this.fftIn;
-    for (let i = 0; i < this.fftSize << 1; i++) fftIn[i] = 0;
+    for (let i = 0; i < (this.fftSize << 1); i++) fftIn[i] = 0;
 
     // Build complex sequence C[k] = X[k] * exp(i*pi*k/(2N)), zero-padded to 2N.
     for (let k = 0; k < N; k++) {
@@ -292,8 +292,7 @@ export class BinkAudioDCTDecoder {
     for (let n = 0; n < N; n++) {
       const re = this.fftOut[n << 1];
       let v = re * this.fftScale;
-      if (v > 1) v = 1;
-      else if (v < -1) v = -1;
+      if (v > 1) v = 1; else if (v < -1) v = -1;
       out[n] = v;
     }
   }
@@ -308,8 +307,7 @@ export class BinkAudioDCTDecoder {
         sum += X[k] * Math.cos(phi * k);
       }
       let v = sum * scale;
-      if (v > 1) v = 1;
-      else if (v < -1) v = -1;
+      if (v > 1) v = 1; else if (v < -1) v = -1;
       out[n] = v;
     }
   }
@@ -341,7 +339,7 @@ export class BinkAudioDCTDecoder {
   private idctIIIFFTWithScale(X: Float32Array, out: Float32Array, scale: number): void {
     const N = this.frameLen;
     const fftIn = this.fftIn;
-    for (let i = 0; i < this.fftSize << 1; i++) fftIn[i] = 0;
+    for (let i = 0; i < (this.fftSize << 1); i++) fftIn[i] = 0;
     for (let k = 0; k < N; k++) {
       const v = X[k];
       const off = k << 1;

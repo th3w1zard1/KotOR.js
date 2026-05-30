@@ -29,7 +29,7 @@ export const ResourceListNode = memo(function ResourceListNode(props: ResourceLi
       await onToggleNode(node);
       setLoadingChildren(false);
     }
-    setOpenState((prev) => !prev);
+    setOpenState(prev => !prev);
   }, [node, onToggleNode, openState]);
 
   const handleClick = useCallback(() => {

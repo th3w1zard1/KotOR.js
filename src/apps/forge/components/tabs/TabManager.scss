@@ -1,7 +1,4 @@
-@use "./_variables" as *;
-@use "./tabs/tab-image-viewer" as *;
-@use "./tabs/tab-twoda-editor" as *;
-@use "./tabs/tab-script-error-log" as *;
+@use "tokens" as *;
 
 //Tab Manager
 
@@ -76,14 +73,39 @@
 
       }
 
+      .dirty-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-left: 0;
+        margin-right: 6px;
+        background: #8f8f8f;
+        vertical-align: middle;
+      }
+
       &:hover {
         color: #CCC;
+        .dirty-dot {
+          background: #b5b5b5;
+        }
       }
 
       &:focus, &:hover, &:active {
         border-top: none;
         border-bottom: none;
         border-right: none;
+      }
+
+      &.active,
+      &.current {
+        .dirty-dot {
+          background: #e5e5e5;
+        }
+      }
+
+      &.drag-over {
+        box-shadow: inset 3px 0 0 #128EC7;
       }
 
     }
@@ -98,6 +120,53 @@
     left: 0;
     right: 0;
 
+    .tab-manager-empty-state {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      pointer-events: none;
+
+      &__logo {
+        width: min(260px, 40vw);
+        max-height: 220px;
+        object-fit: contain;
+        opacity: 0.13;
+        filter: grayscale(100%) saturate(0.4);
+        user-select: none;
+      }
+
+      &__logo-fallback {
+        font-family: "Trajan-Pro-Regular", "OldRepublic-Bold", serif;
+        font-size: clamp(32px, 6vw, 64px);
+        letter-spacing: 0.08em;
+        color: #cfd8dc;
+        opacity: 0.18;
+        user-select: none;
+      }
+
+      &__quick-start-btn {
+        pointer-events: auto;
+        border: 1px solid rgba(18, 142, 199, 0.7);
+        background: rgba(18, 142, 199, 0.12);
+        color: #9fdfff;
+        border-radius: 4px;
+        padding: 8px 14px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+
+        &:hover {
+          background: rgba(18, 142, 199, 0.24);
+          border-color: rgba(18, 142, 199, 0.95);
+          color: #d5f3ff;
+        }
+      }
+    }
+    
     // height: 100%;
     // display: none;
     // box-shadow: rgb(0, 0, 0) 0px 0px 5px inset;
@@ -172,7 +241,7 @@
 
     }
 
-    .tab-pane.TabQuickStartState {
+    .quick-start-container {
       // background-image: url(https://img.wallpapersafari.com/desktop/1600/900/28/25/NHoSzk.jpg);
       background-size: cover;
       background-repeat: no-repeat;
@@ -188,6 +257,7 @@
         bottom: 0;
         -webkit-backdrop-filter: grayscale(100%) contrast(110%) opacity(0.25);
         backdrop-filter: grayscale(100%) contrast(110%) opacity(0.25);
+        pointer-events: none;
       }
 
       & > .row {
@@ -258,4 +328,3 @@
 .tab-container {
   position: relative;
 }
-

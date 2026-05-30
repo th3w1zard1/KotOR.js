@@ -1,20 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { BinaryReader } from '@/utility/binary/BinaryReader';
-import { BinaryWriter } from '@/utility/binary/BinaryWriter';
-import { GameFileSystem } from '@/utility/GameFileSystem';
-import { ResourceTypes } from '@/resource/ResourceTypes';
-import { IRIMResource } from '@/interface/resource/IRIMResource';
-import { IRIMHeader } from '@/interface/resource/IRIMHeader';
-import {
-  objectToTOML,
-  objectToXML,
-  objectToYAML,
-  tomlToObject,
-  xmlToObject,
-  yamlToObject,
-} from '@/utility/FormatSerialization';
-import { normalizeResRefFromArchiveSlot, RESREF_FIXED_SLOT_BYTES } from '@/resource/resRefLayout';
+import { BinaryReader } from "@/utility/binary/BinaryReader";
+import { BinaryWriter } from "@/utility/binary/BinaryWriter";
+import { Endians } from "@/enums/resource/Endians";
+import { GameFileSystem } from "@/utility/GameFileSystem";
+import { ResourceTypes } from "@/resource/ResourceTypes";
+import { IRIMResource } from "@/interface/resource/IRIMResource";
+import { IRIMHeader } from "@/interface/resource/IRIMHeader";
 
 const RIM_HEADER_LENGTH = 160;
 /** RIM V1.0: each resource list row is 32 bytes (resRef, type, id, offset, size), matching the key-table layout. */
@@ -340,139 +332,53 @@ export class RIMObject {
     }
   }
 
-  private getInlineResourceData(resource: IRIMResource): Uint8Array | null {
-    if (resource.data instanceof Uint8Array) {
-      return resource.data;
+  /**
+   * Build a new RIM archive in memory
+   */
+  static buildFromResourceEntries(entries: { resRef: string; resType: number; data: Uint8Array }[]): Uint8Array {
+    const HEADER_RES_TABLE_OFFSET = 160;
+    const n = entries.length;
+    const indexBytes = n * 34;
+    let dataCursor = HEADER_RES_TABLE_OFFSET + indexBytes;
+    const rows: { resRef: string; resType: number; resId: number; offset: number; size: number; data: Uint8Array }[] = [];
+    for(let i = 0; i < n; i++){
+      const e = entries[i];
+      const resRef = String(e.resRef || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, '')
+        .slice(0, 16);
+      const data = e.data;
+      rows.push({
+        resRef,
+        resType: e.resType | 0,
+        resId: i,
+        offset: dataCursor,
+        size: data.byteLength,
+        data
+      });
+      dataCursor += data.byteLength;
     }
-
-    if (this.inMemory && this.buffer instanceof Uint8Array) {
-      return new Uint8Array(this.buffer.slice(resource.offset, resource.offset + resource.size));
-    }
-
-    return null;
-  }
-
-  private buildExportBufferFromResources(resources: Array<IRIMResource & { data: Uint8Array }>): Uint8Array {
-    const writer = new BinaryWriter();
-    const headerSize = DEFAULT_RIM_RESOURCES_OFFSET;
-    const entrySize = RIM_KEY_ENTRY_SIZE;
-
-    this.header.fileType = this.header.fileType || 'RIM ';
-    this.header.fileVersion = this.header.fileVersion || 'V1.0';
-    this.header.resourceCount = resources.length;
-    this.header.resourcesOffset = DEFAULT_RIM_RESOURCES_OFFSET;
-
-    let currentOffset = headerSize + resources.length * entrySize;
-    resources.forEach((resource, index) => {
-      resource.resId = index;
-      resource.offset = currentOffset;
-      resource.size = resource.data.length;
-      currentOffset += resource.size;
-    });
-
-    writer.writeChars(this.header.fileType);
-    writer.writeChars(this.header.fileVersion);
+    const writer = new BinaryWriter(new Uint8Array(dataCursor), Endians.LITTLE);
+    writer.writeString('RIM ');
+    writer.writeString('V1.0');
     writer.writeUInt32(0);
-    writer.writeUInt32(resources.length);
-    writer.writeUInt32(this.header.resourcesOffset);
-    writer.writeBytes(new Uint8Array(headerSize - writer.tell()));
-
-    resources.forEach((resource) => {
-      writer.writeString(resource.resRef.padEnd(16, '\0').slice(0, 16));
-      writer.writeUInt16(resource.resType);
-      writer.writeUInt16(resource.unused ?? 0);
-      writer.writeUInt32(resource.resId);
-      writer.writeUInt32(resource.offset);
-      writer.writeUInt32(resource.size);
-    });
-
-    resources.forEach((resource) => {
-      writer.writeBytes(resource.data);
-    });
-
-    return writer.buffer;
-  }
-
-  getExportBuffer(): Uint8Array {
-    const resources = this.resources.map((resource) => {
-      const data = this.getInlineResourceData(resource);
-      if (!(data instanceof Uint8Array)) {
-        throw new Error('RIM resource data is not loaded in memory; use export() for disk-backed archives.');
-      }
-      return {
-        ...resource,
-        data,
-      };
-    });
-
-    return this.buildExportBufferFromResources(resources);
-  }
-
-  async export(file: string): Promise<void> {
-    if (!file) {
-      throw new Error('Failed to export: Missing file path.');
+    writer.writeUInt32(n);
+    writer.writeUInt32(HEADER_RES_TABLE_OFFSET);
+    while(writer.tell() < HEADER_RES_TABLE_OFFSET){
+      writer.writeUInt8(0);
     }
-
-    const resources = await Promise.all(
-      this.resources.map(async (resource) => ({
-        ...resource,
-        data: await this.getResourceBuffer(resource),
-      }))
-    );
-
-    const buffer = this.buildExportBufferFromResources(resources as Array<IRIMResource & { data: Uint8Array }>);
-
-    if (path.isAbsolute(file)) {
-      await fs.promises.writeFile(file, buffer);
-      return;
+    for(const r of rows){
+      writer.writeString(r.resRef.padEnd(16, '\0').substring(0, 16));
+      writer.writeUInt16(r.resType & 0xffff);
+      writer.writeUInt16(0);
+      writer.writeUInt32(r.resId >>> 0);
+      writer.writeUInt32(r.offset >>> 0);
+      writer.writeUInt32(r.size >>> 0);
     }
-
-    await GameFileSystem.writeFile(file, buffer);
-  }
-
-  toJSON(): { header: IRIMHeader; resources: IRIMResource[]; type: string; group: string } {
-    return {
-      header: { ...this.header },
-      resources: this.resources.map((resource) => ({
-        ...resource,
-        data: resource.data ? Uint8Array.from(resource.data) : undefined,
-      })),
-      type: this.type || 'rim',
-      group: this.group || 'rim',
-    };
-  }
-
-  fromJSON(json: string | ReturnType<RIMObject['toJSON']>): void {
-    const data = typeof json === 'string' ? (JSON.parse(json) as ReturnType<RIMObject['toJSON']>) : json;
-    this.header = { ...data.header };
-    this.type = data.type || 'rim';
-    this.group = data.group || 'rim';
-    this.resources = [];
-    this.resourceMap.clear();
-    (data.resources || []).forEach((resource) => this.addResource({ ...resource }));
-  }
-
-  toXML(): string {
-    return objectToXML({ json: JSON.stringify(this.toJSON()) });
-  }
-  fromXML(xml: string): void {
-    const data = xmlToObject(xml) as { json?: string } | ReturnType<RIMObject['toJSON']>;
-    if (typeof (data as { json?: string }).json === 'string') {
-      this.fromJSON((data as { json: string }).json);
-      return;
+    for(const r of rows){
+      writer.writeBytes(r.data);
     }
-    this.fromJSON(data as ReturnType<RIMObject['toJSON']>);
+    return writer.buffer.subarray(0, writer.tell());
   }
-  toYAML(): string {
-    return objectToYAML(this.toJSON());
-  }
-  fromYAML(yaml: string): void {
-    this.fromJSON(yamlToObject(yaml) as ReturnType<RIMObject['toJSON']>);
-  }
-  toTOML(): string {
-    return objectToTOML(this.toJSON());
-  }
-  fromTOML(toml: string): void {
-    this.fromJSON(tomlToObject(toml) as ReturnType<RIMObject['toJSON']>);
-  }
+
 }

@@ -122,14 +122,14 @@ export class FollowerCamera {
     }
 
     const appearance = followee.creatureAppearance;
-    const followeeHeight = 1.6 + FollowerCamera.DEBUG_OFFSET; //appearance.height + FollowerCamera.DEBUG_OFFSET;
+    const followeeHeight = 1.6 + FollowerCamera.DEBUG_OFFSET;//appearance.height + FollowerCamera.DEBUG_OFFSET;
 
     let offsetHeight = 0;
 
     if (GameState.Mode == EngineMode.MINIGAME) {
       offsetHeight = 1;
-    } else {
-      if (followee && appearance && (appearance.cameraheightoffset > 0 || appearance.cameraheightoffset < 0)) {
+    }else{
+      if(followee && appearance && (appearance.cameraheightoffset > 0 || appearance.cameraheightoffset < 0)){
         offsetHeight = appearance.cameraheightoffset;
       }
     }

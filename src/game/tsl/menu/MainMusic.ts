@@ -53,18 +53,17 @@ export class MainMusic extends GameMenu {
     if (skipInit) return;
     return new Promise<void>((resolve, reject) => {
       this.LB_MUSIC.setProtoBuilder(GUIMusicItem);
-
+      
       this.audioCtx = new (global.AudioContext || (global as any).webkitAudioContext)();
       this.musicGain = this.audioCtx.createGain();
       this.musicGain.gain.value = this.musicVolume;
       this.musicGain.connect(this.audioCtx.destination);
 
       const table = GameState.TwoDAManager.datatables.get('musictable');
-      for (let i = 0; i < table.RowCount; i++) {
-        const row = table.getRowByIndex(i);
-        this.LB_MUSIC.addItem(row);
-        this.musicList.push(row);
+      for(let i = 0; i < table.RowCount; i++){
+        this.musicList.push(table.getRowByIndex(i));
       }
+      this.LB_MUSIC.setItems(this.musicList);
 
       this.LBL_TRACKNUM.setText(`${0} / ${table.RowCount}`);
 

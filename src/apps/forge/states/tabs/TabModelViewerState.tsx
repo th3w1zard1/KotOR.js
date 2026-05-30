@@ -1,7 +1,7 @@
-import * as fs from 'fs';
-import BaseTabStateOptions from '@/apps/forge/interfaces/BaseTabStateOptions';
-import { TabState, TabStateEventListenerTypes, TabStateEventListeners } from '@/apps/forge/states/tabs';
-import * as KotOR from '@/apps/forge/KotOR';
+import * as fs from "fs";
+import BaseTabStateOptions from "@/apps/forge/interfaces/BaseTabStateOptions";
+import { TabState, TabStateEventListenerTypes, TabStateEventListeners } from "@/apps/forge/states/tabs";
+import * as KotOR from "@/apps/forge/KotOR";
 import * as THREE from 'three';
 import React from 'react';
 import { TabModelViewer } from '@/apps/forge/components/tabs/tab-model-viewer/TabModelViewer';
@@ -18,8 +18,8 @@ import {
   fetchModelBuffers,
   showExtractionResults,
   createProgressModal,
-} from '@/apps/forge/helpers/AssetExtraction';
-import { OdysseyModelNodeType } from '@/enums/odyssey/OdysseyModelNodeType';
+} from "@/apps/forge/helpers/AssetExtraction";
+import { OdysseyModelNodeType } from "@/enums/odyssey/OdysseyModelNodeType";
 
 declare const dialog: any;
 
@@ -112,53 +112,36 @@ export const DEFAULT_MODEL_VIEWER_LAYER_VISIBILITY: ModelViewerLayerVisibility =
 };
 
 export type TabModelViewerStateEventListenerTypes =
-  | (TabStateEventListenerTypes & '')
-  | 'onModelLoaded'
-  | 'onPlay'
-  | 'onPause'
-  | 'onStop'
-  | 'onAudioLoad'
-  | 'onHeadChange'
-  | 'onHeadLoad'
-  | 'onKeyFrameSelect'
-  | 'onKeyFrameTrackZoomIn'
-  | 'onKeyFrameTrackZoomOut'
-  | 'onAnimate'
-  | 'onKeyFramesChange'
-  | 'onDurationChange'
-  | 'onAnimationChange'
-  | 'onLoopChange'
-  | 'onNodeSelect'
-  | 'onCameraChange'
-  | 'onModelViewerLayersChange'
-  | 'onKeyframeEditorChange'
-  | 'onTrackSelectionChange'
-  | 'onKeySelectionChange'
-  | 'onControlModeChange';
+TabStateEventListenerTypes & 
+  ''|'onModelLoaded'|'onPlay'|'onPause'|'onStop'|'onAudioLoad'|'onHeadChange'|
+  'onHeadLoad'|'onKeyFrameSelect'|'onKeyFrameTrackZoomIn'|'onKeyFrameTrackZoomOut'|
+  'onAnimate'|'onKeyFramesChange'|'onDurationChange'|'onAnimationChange'|'onLoopChange'|
+  'onNodeSelect'|'onCameraChange'|'onModelViewerLayersChange'|'onKeyframeEditorChange'|
+  'onTrackSelectionChange'|'onKeySelectionChange'|'onControlModeChange';
 
 export interface TabModelViewerStateEventListeners extends TabStateEventListeners {
-  onModelLoaded: Function[];
-  onPlay: Function[];
-  onPause: Function[];
-  onStop: Function[];
-  onAudioLoad: Function[];
-  onHeadChange: Function[];
-  onHeadLoad: Function[];
-  onKeyFrameSelect: Function[];
-  onKeyFrameTrackZoomIn: Function[];
-  onKeyFrameTrackZoomOut: Function[];
-  onAnimate: Function[];
-  onKeyFramesChange: Function[];
-  onDurationChange: Function[];
-  onAnimationChange: Function[];
-  onLoopChange: Function[];
-  onNodeSelect: Function[];
-  onCameraChange: Function[];
-  onModelViewerLayersChange: Function[];
-  onKeyframeEditorChange: Function[];
-  onTrackSelectionChange: Function[];
-  onKeySelectionChange: Function[];
-  onControlModeChange: Function[];
+  onModelLoaded: Function[],
+  onPlay: Function[],
+  onPause: Function[],
+  onStop: Function[],
+  onAudioLoad: Function[],
+  onHeadChange: Function[],
+  onHeadLoad: Function[],
+  onKeyFrameSelect: Function[],
+  onKeyFrameTrackZoomIn: Function[],
+  onKeyFrameTrackZoomOut: Function[],
+  onAnimate: Function[],
+  onKeyFramesChange: Function[],
+  onDurationChange: Function[],
+  onAnimationChange: Function[],
+  onLoopChange: Function[],
+  onNodeSelect: Function[],
+  onCameraChange: Function[],
+  onModelViewerLayersChange: Function[],
+  onKeyframeEditorChange: Function[],
+  onTrackSelectionChange: Function[],
+  onKeySelectionChange: Function[],
+  onControlModeChange: Function[],
 }
 
 export class TabModelViewerState extends TabState {
@@ -251,6 +234,41 @@ export class TabModelViewerState extends TabState {
 
   modelViewerLayerVisibility: ModelViewerLayerVisibility = { ...DEFAULT_MODEL_VIEWER_LAYER_VISIBILITY };
 
+  /** When OdysseyModel3D.rebuildFromSourceModel swaps instances, rebind viewer state and Forge registry. */
+  private readonly onOdysseyInstanceReplaced = (event: THREE.Event): void => {
+    const next = (event as THREE.Event & { next?: KotOR.OdysseyModel3D; previous?: KotOR.OdysseyModel3D }).next;
+    const prev = (event as THREE.Event & { next?: KotOR.OdysseyModel3D; previous?: KotOR.OdysseyModel3D }).previous;
+    if (!next) return;
+    if (prev) {
+      prev.removeEventListener('odysseyInstanceReplaced', this.onOdysseyInstanceReplaced as any);
+    }
+    this.model = next;
+    next.addEventListener('odysseyInstanceReplaced', this.onOdysseyInstanceReplaced as any);
+    this.ui3DRenderer.replaceOdysseyModelInRegistry(prev ?? (event.target as KotOR.OdysseyModel3D), next);
+
+    this.animations = this.model.odysseyAnimations.slice(0).sort((a, b) => a.name.localeCompare(b.name));
+    if (this.animations.length) {
+      this.selectedAnimationIndex = Math.min(this.selectedAnimationIndex, this.animations.length - 1);
+      this.currentAnimation = this.animations[this.selectedAnimationIndex];
+      this.model.animationManager.currentAnimation = this.currentAnimation;
+      this.model.animationManager.currentAnimationState = this.currentAnimationState;
+    }
+
+    next.emitters.map((emitter) => {
+      emitter.referenceNode = this.ui3DRenderer.referenceNode as any;
+    });
+
+    this.ui3DRenderer.sceneGraphManager.rebuild();
+    TabModelViewerState.applyModelViewerLayers(this.model, this.modelViewerLayerVisibility, {
+      layoutGroup: this.layout_group,
+      groundMesh: this.groundMesh,
+      lightHelpers: this.ui3DRenderer.group.light_helpers,
+    });
+    this.processEventListener<TabModelViewerStateEventListenerTypes>('onKeyframeEditorChange', [this]);
+  };
+
+  modelViewerLayerVisibility: ModelViewerLayerVisibility = { ...DEFAULT_MODEL_VIEWER_LAYER_VISIBILITY };
+
   constructor(options: BaseTabStateOptions = {}) {
     super(options);
     // this.singleInstance = true;
@@ -269,20 +287,15 @@ export class TabModelViewerState extends TabState {
 
     this.ui3DRenderer = new UI3DRenderer();
     this.bindTransformControlsEvents();
-    this.ui3DRenderer.addEventListener<UI3DRendererEventListenerTypes>('onCanvasAttached', () =>
-      this.bindTransformControlsEvents()
-    );
+    this.ui3DRenderer.addEventListener<UI3DRendererEventListenerTypes>('onCanvasAttached', () => this.bindTransformControlsEvents());
     this.ui3DRenderer.addEventListener<UI3DRendererEventListenerTypes>('onBeforeRender', this.animate.bind(this));
-    this.ui3DRenderer.addEventListener<UI3DRendererEventListenerTypes>(
-      'onSelect',
-      (object: THREE.Object3D | undefined) => {
-        if (this.controlMode !== TabModelViewerControlMode.SELECT && !this.allowNonSelectModeSelection) {
-          return;
-        }
-        const odysseyNode = TabModelViewerState.findOdysseyObject3D(object);
-        this.applySelectedOdysseyNode(odysseyNode);
+    this.ui3DRenderer.addEventListener<UI3DRendererEventListenerTypes>('onSelect', (object: THREE.Object3D | undefined) => {
+      if (this.controlMode !== TabModelViewerControlMode.SELECT && !this.allowNonSelectModeSelection) {
+        return;
       }
-    );
+      const odysseyNode = TabModelViewerState.findOdysseyObject3D(object);
+      this.applySelectedOdysseyNode(odysseyNode);
+    });
     this.ui3DRenderer.scene.add(this.groundMesh);
     this.ui3DRenderer.scene.add(this.layout_group);
 
@@ -310,8 +323,7 @@ export class TabModelViewerState extends TabState {
           controllers: [...node.controllers.entries()].map(([type, controller]) => ({
             type,
             nodeType: node.nodeType,
-            columnCount:
-              (controller as any).columnCount ?? (type === KotOR.OdysseyModelControllerType.Orientation ? 4 : 3),
+            columnCount: (controller as any).columnCount ?? (type === KotOR.OdysseyModelControllerType.Orientation ? 4 : 3),
             frames: controller.data.map((frame) => ({
               time: frame.time ?? 0,
               x: frame.x ?? 0,
@@ -337,9 +349,7 @@ export class TabModelViewerState extends TabState {
       if (!dstAnim) continue;
       for (let n = 0; n < srcAnim.nodes.length; n++) {
         const srcNode = srcAnim.nodes[n];
-        const dstNode = dstAnim.nodes.find(
-          (node) => node.name.toLowerCase().trim() === srcNode.name.toLowerCase().trim()
-        );
+        const dstNode = dstAnim.nodes.find((node) => node.name.toLowerCase().trim() === srcNode.name.toLowerCase().trim());
         if (!dstNode) continue;
         const nextControllers = new Map<number, KotOR.OdysseyController>();
         for (let c = 0; c < srcNode.controllers.length; c++) {
@@ -351,23 +361,20 @@ export class TabModelViewerState extends TabState {
             timeKeyIndex: 0,
             dataValueIndex: 0,
             columnCount: srcController.columnCount,
-            data: srcController.frames.map(
-              (frame) =>
-                ({
-                  time: frame.time,
-                  x: frame.x,
-                  y: frame.y,
-                  z: frame.z,
-                  w: frame.w,
-                  value: frame.value,
-                  isBezier: frame.isBezier,
-                  isLinearBezier: frame.isLinearBezier,
-                  lastFrame: frame.lastFrame,
-                  a: new THREE.Vector3(),
-                  b: new THREE.Vector3(),
-                  c: new THREE.Vector3(),
-                }) as KotOR.IOdysseyControllerFrameGeneric
-            ),
+            data: srcController.frames.map((frame) => ({
+              time: frame.time,
+              x: frame.x,
+              y: frame.y,
+              z: frame.z,
+              w: frame.w,
+              value: frame.value,
+              isBezier: frame.isBezier,
+              isLinearBezier: frame.isLinearBezier,
+              lastFrame: frame.lastFrame,
+              a: new THREE.Vector3(),
+              b: new THREE.Vector3(),
+              c: new THREE.Vector3(),
+            } as KotOR.IOdysseyControllerFrameGeneric)),
           });
           nextControllers.set(srcController.type, controller);
         }
@@ -392,9 +399,9 @@ export class TabModelViewerState extends TabState {
     this.processEventListener<TabModelViewerStateEventListenerTypes>('onKeyframeEditorChange', [this]);
   }
 
-  public openFile(file?: EditorFile) {
-    return new Promise<KotOR.OdysseyModel3D>((resolve, reject) => {
-      if (!file && this.file instanceof EditorFile) {
+  public openFile(file?: EditorFile){
+    return new Promise<KotOR.OdysseyModel3D>( (resolve, reject) => {
+      if(!file && this.file instanceof EditorFile){
         file = this.file;
       }
 
@@ -405,22 +412,23 @@ export class TabModelViewerState extends TabState {
         file.readFile().then((response) => {
           this.mdl = response.buffer;
           this.mdx = (response.buffer2 as Buffer) ?? new Uint8Array(0);
-          const head = new TextDecoder('utf-8', { fatal: false }).decode(
-            this.mdl.subarray(0, Math.min(512, this.mdl.length))
+          const head = new TextDecoder("utf-8", { fatal: false }).decode(
+            this.mdl.subarray(0, Math.min(512, this.mdl.length)),
           );
           const asciiMdl = /\b(beginmodelgeom|newmodel|# MODEL ASCII)\b/i.test(head);
           if (asciiMdl) {
-            this.odysseyModel = KotOR.parseOdysseyModelAscii(new TextDecoder('utf-8').decode(this.mdl));
+            this.odysseyModel = KotOR.parseOdysseyModelAscii(new TextDecoder("utf-8").decode(this.mdl));
           } else {
             this.odysseyModel = new KotOR.OdysseyModel(
               new BinaryReader(response.buffer),
-              new BinaryReader((response.buffer2 as Buffer) ?? new Uint8Array(0))
+              new BinaryReader((response.buffer2 as Buffer) ?? new Uint8Array(0)),
             );
           }
           KotOR.OdysseyModel3D.FromMDL(this.odysseyModel, {
             // manageLighting: false,
             context: this.ui3DRenderer,
-            editorMode: true,
+            editorMode: true, 
+            disableMatrixUpdate: false,
             onComplete: (model: KotOR.OdysseyModel3D) => {
               this.model = model;
               model.addEventListener('odysseyInstanceReplaced', this.onOdysseyInstanceReplaced as any);
@@ -642,6 +650,7 @@ export class TabModelViewerState extends TabState {
               context: this.ui3DRenderer,
               editorMode: true,
               mergeStatic: false,
+              disableMatrixUpdate: false
             });
             if (model) {
               model.position.copy(room.position);
@@ -763,10 +772,7 @@ export class TabModelViewerState extends TabState {
       this.selectedModelNode = undefined;
     }
     this.syncTransformControlAttachment();
-    this.processEventListener<TabModelViewerStateEventListenerTypes>('onNodeSelect', [
-      this.selectedNode,
-      this.selectedModelNode,
-    ]);
+    this.processEventListener<TabModelViewerStateEventListenerTypes>('onNodeSelect', [this.selectedNode, this.selectedModelNode]);
   }
 
   private findSceneNodeByName(nodeName: string): KotOR.OdysseyObject3D | undefined {
@@ -808,11 +814,7 @@ export class TabModelViewerState extends TabState {
     // TransformControls emits change events on hover/axis highlight; only write keys during active drags.
     if (!this.ui3DRenderer.transformControlsDragging) return;
     if (!this.selectedNode || !this.selectedModelNode || !this.currentAnimation) return;
-    if (
-      this.controlMode !== TabModelViewerControlMode.TRANSLATE &&
-      this.controlMode !== TabModelViewerControlMode.ROTATE
-    )
-      return;
+    if (this.controlMode !== TabModelViewerControlMode.TRANSLATE && this.controlMode !== TabModelViewerControlMode.ROTATE) return;
 
     const nodeName = this.selectedModelNode.name;
     if (!nodeName) return;
@@ -839,7 +841,7 @@ export class TabModelViewerState extends TabState {
   private upsertNodeControllerKeyAtCurrentTime(
     nodeName: string,
     controllerType: number,
-    patch: Partial<KotOR.IOdysseyControllerFrameGeneric>
+    patch: Partial<KotOR.IOdysseyControllerFrameGeneric>,
   ): void {
     const track = this.ensureTrackForNodeController(nodeName, controllerType);
     if (!track) return;
@@ -929,12 +931,7 @@ export class TabModelViewerState extends TabState {
     for (let i = 0; i < this.currentAnimation.nodes.length; i++) {
       const node = this.currentAnimation.nodes[i];
       const isCameraHook = TabModelViewerState.isCameraHookNodeName(node.name);
-      if (
-        respectFilter &&
-        this.trackFilterScope === 'selectedNode' &&
-        selectedNodeName &&
-        node.name.toLowerCase().trim() !== selectedNodeName
-      ) {
+      if (respectFilter && this.trackFilterScope === 'selectedNode' && selectedNodeName && node.name.toLowerCase().trim() !== selectedNodeName) {
         continue;
       }
       if (respectFilter && this.trackFilterScope === 'cameraHook' && !isCameraHook) {
@@ -966,9 +963,7 @@ export class TabModelViewerState extends TabState {
   }
 
   getCameraHookTrackIds(): string[] {
-    return this.getEditableTracks()
-      .filter((t) => t.isCameraHook)
-      .map((t) => t.id);
+    return this.getEditableTracks().filter((t) => t.isCameraHook).map((t) => t.id);
   }
 
   selectCameraHookByNodeName(name: string): void {
@@ -977,10 +972,7 @@ export class TabModelViewerState extends TabState {
     const node = this.currentAnimation.nodes.find((entry) => entry.name.toLowerCase().trim() === n);
     if (!node) return;
     this.selectedModelNode = node;
-    this.processEventListener<TabModelViewerStateEventListenerTypes>('onNodeSelect', [
-      this.selectedNode,
-      this.selectedModelNode,
-    ]);
+    this.processEventListener<TabModelViewerStateEventListenerTypes>('onNodeSelect', [this.selectedNode, this.selectedModelNode]);
     if (this.trackFilterScope === 'selectedNode') {
       this.processEventListener<TabModelViewerStateEventListenerTypes>('onKeyframeEditorChange', [this]);
     }
@@ -1018,10 +1010,7 @@ export class TabModelViewerState extends TabState {
     this.selectedKey = { trackId, keyIndex };
     this.selected_frame = track.keys[keyIndex];
     this.processEventListener<TabModelViewerStateEventListenerTypes>('onKeyFrameSelect', [this.selected_frame]);
-    this.processEventListener<TabModelViewerStateEventListenerTypes>('onKeySelectionChange', [
-      this.selectedKey,
-      this.selectedTrack,
-    ]);
+    this.processEventListener<TabModelViewerStateEventListenerTypes>('onKeySelectionChange', [this.selectedKey, this.selectedTrack]);
     this.processEventListener<TabModelViewerStateEventListenerTypes>('onKeyframeEditorChange', [this]);
   }
 
@@ -1062,12 +1051,7 @@ export class TabModelViewerState extends TabState {
     this.processEventListener<TabModelViewerStateEventListenerTypes>('onKeyframeEditorChange', [this]);
   }
 
-  updateKey(
-    trackId: string,
-    keyIndex: number,
-    patch: Partial<KotOR.IOdysseyControllerFrameGeneric>,
-    options: { captureUndo?: boolean } = {}
-  ): void {
+  updateKey(trackId: string, keyIndex: number, patch: Partial<KotOR.IOdysseyControllerFrameGeneric>, options: { captureUndo?: boolean } = {}): void {
     if (options.captureUndo !== false) this.captureUndoSnapshot();
     const track = this.getTrackById(trackId, false);
     if (!track) return;
@@ -1118,7 +1102,7 @@ export class TabModelViewerState extends TabState {
   static applyModelViewerLayers(
     model: KotOR.OdysseyModel3D | undefined,
     layers: ModelViewerLayerVisibility,
-    sceneExtras?: { layoutGroup?: THREE.Group; groundMesh?: THREE.Object3D; lightHelpers?: THREE.Object3D }
+    sceneExtras?: { layoutGroup?: THREE.Group; groundMesh?: THREE.Object3D; lightHelpers?: THREE.Object3D },
   ): void {
     if (sceneExtras?.layoutGroup) {
       sceneExtras.layoutGroup.visible = layers.layout;
@@ -1305,21 +1289,21 @@ export class TabModelViewerState extends TabState {
     if (!this.odysseyModel) return;
 
     const baseName =
-      (this.odysseyModel.geometryHeader.modelName || this.file?.getFilename() || 'model')
-        .replace(/\.(mdl\.ascii|mdl|mdx)$/i, '')
-        .trim() || 'model';
+      (this.odysseyModel.geometryHeader.modelName || this.file?.getFilename() || "model")
+        .replace(/\.(mdl\.ascii|mdl|mdx)$/i, "")
+        .trim() || "model";
     const suggestedName = `${baseName}.mdl.ascii`;
     const text = KotOR.exportOdysseyModelAscii(this.odysseyModel);
     const payload = new TextEncoder().encode(text);
 
     if (KotOR.ApplicationProfile.ENV === KotOR.ApplicationEnvironment.ELECTRON) {
       const savePath = await dialog.showSaveDialog({
-        title: 'Export MDL as ASCII',
+        title: "Export MDL as ASCII",
         defaultPath: suggestedName,
-        properties: ['createDirectory'],
-        filters: [{ name: 'MDL ASCII', extensions: ['mdl.ascii', 'mdl'] }],
+        properties: ["createDirectory"],
+        filters: [{ name: "MDL ASCII", extensions: ["mdl.ascii", "mdl"] }],
       });
-      if (!savePath?.canceled && typeof savePath?.filePath === 'string') {
+      if (!savePath?.canceled && typeof savePath?.filePath === "string") {
         await fs.promises.writeFile(savePath.filePath, payload);
       }
       return;
@@ -1330,8 +1314,8 @@ export class TabModelViewerState extends TabState {
         suggestedName,
         types: [
           {
-            description: 'MDL ASCII',
-            accept: { 'text/plain': ['.mdl.ascii', '.mdl'] },
+            description: "MDL ASCII",
+            accept: { "text/plain": [".mdl.ascii", ".mdl"] },
           },
         ],
       });
@@ -1339,8 +1323,9 @@ export class TabModelViewerState extends TabState {
       await ws.write(payload as BufferSource);
       await ws.close();
     } catch (e: any) {
-      if (e?.name === 'AbortError') return;
-      console.error('exportOdysseyModelAscii', e);
+      if (e?.name === "AbortError") return;
+      console.error("exportOdysseyModelAscii", e);
     }
   }
+
 }

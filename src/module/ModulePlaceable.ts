@@ -20,17 +20,18 @@ import { ResourceTypes } from '@/resource/ResourceTypes';
 import { OdysseyModel3D } from '@/three/odyssey';
 import { SWPlaceableAppearance } from '@/engine/rules/SWPlaceableAppearance';
 // import { TwoDAManager, InventoryManager, AppearanceManager, MenuManager, ModuleObjectManager, FactionManager } from "@/managers";
-import { AudioEngine } from '@/audio/AudioEngine';
-import { ModuleObjectType } from '@/enums/module/ModuleObjectType';
-import { BitWise } from '@/utility/BitWise';
-import { GameEffectFactory } from '@/effects/GameEffectFactory';
-import { ModuleObject } from '@/module/ModuleObject';
-import type { ModuleItem } from '@/module/ModuleItem';
-import { DLGConversationType } from '@/enums/dialog/DLGConversationType';
-import { SkillType } from '@/enums/nwscript/SkillType';
-import { ModulePlaceableObjectSound } from '@/enums/module/ModulePlaceableObjectSound';
-import { SWBodyBag } from '@/engine/rules/SWBodyBag';
-import { ModuleObjectScript } from '@/enums/module/ModuleObjectScript';
+import { AudioEngine } from "@/audio/AudioEngine";
+import { ModuleObjectType } from "@/enums/module/ModuleObjectType";
+import { BitWise } from "@/utility/BitWise";
+import { GameEffectFactory } from "@/effects/GameEffectFactory";
+import { ModuleObject } from "@/module/ModuleObject";
+import type { ModuleItem } from "@/module/ModuleItem";
+import { DLGConversationType } from "@/enums/dialog/DLGConversationType";
+import { SkillType } from "@/enums/nwscript/SkillType";
+import { ModulePlaceableObjectSound } from "@/enums/module/ModulePlaceableObjectSound";
+import { AudioPriorityGroup } from "@/enums/audio/AudioPriorityGroup";
+import { SWBodyBag } from "@/engine/rules/SWBodyBag";
+import { ModuleObjectScript } from "@/enums/module/ModuleObjectScript";
 
 interface AnimStateInfo {
   lastAnimState: ModulePlaceableAnimState;
@@ -160,6 +161,7 @@ export class ModulePlaceable extends ModuleObject {
     try {
       this.audioEmitter = new AudioEmitter(AudioEngine.GetAudioEngine());
       this.audioEmitter.maxDistance = 50;
+      this.audioEmitter.setPriorityGroupId(AudioPriorityGroup.ROOM_SOUNDS);
       this.audioEmitter.load();
     } catch (e) {
       log.error('AudioEmitter failed to create on object', e as Error);
@@ -194,7 +196,9 @@ export class ModulePlaceable extends ModuleObject {
         }
       }
 
-      if (this.model.visible) this.model.update(delta);
+      if(this.model.visible && !this.static){
+        this.model.update(delta);
+      }
 
       this.audioEmitter.setPosition(this.position.x, this.position.y, this.position.z);
     }
@@ -408,7 +412,7 @@ export class ModulePlaceable extends ModuleObject {
     while (this.inventory.length) {
       const item = this.inventory.pop();
       const stackSize = item.getStackSize();
-      for (let i = 0; i < stackSize; i++) {
+      for(let i = 0; i < stackSize; i++){
         GameState.InventoryManager.addItem(item);
       }
     }

@@ -105,44 +105,36 @@ export class MenuOptions extends K1_MenuOptions {
         });
       });
 
-      this.BTN_LOADGAME.addEventListener('hover', () => {
-        this.LB_DESC.clearItems();
-        this.LB_DESC.addItem(GameState.TLKManager.TLKStrings[42300].Value);
+      this.BTN_LOADGAME.addEventListener( 'hover', () => {
+        this.LB_DESC.setItem(GameState.TLKManager.TLKStrings[42300].Value);
       });
 
-      this.BTN_SAVEGAME.addEventListener('hover', () => {
-        this.LB_DESC.clearItems();
-        this.LB_DESC.addItem(GameState.TLKManager.TLKStrings[42301].Value);
+      this.BTN_SAVEGAME.addEventListener( 'hover', () => {
+        this.LB_DESC.setItem(GameState.TLKManager.TLKStrings[42301].Value);
       });
 
-      this.BTN_GAMEPLAY.addEventListener('hover', () => {
-        this.LB_DESC.clearItems();
-        this.LB_DESC.addItem(GameState.TLKManager.TLKStrings[42273].Value);
+      this.BTN_GAMEPLAY.addEventListener( 'hover', () => {
+        this.LB_DESC.setItem(GameState.TLKManager.TLKStrings[42273].Value);
       });
 
-      this.BTN_FEEDBACK.addEventListener('hover', () => {
-        this.LB_DESC.clearItems();
-        this.LB_DESC.addItem(GameState.TLKManager.TLKStrings[136314].Value);
+      this.BTN_FEEDBACK.addEventListener( 'hover', () => {
+        this.LB_DESC.setItem(GameState.TLKManager.TLKStrings[136314].Value);
       });
 
-      this.BTN_AUTOPAUSE.addEventListener('hover', () => {
-        this.LB_DESC.clearItems();
-        this.LB_DESC.addItem(GameState.TLKManager.TLKStrings[42275].Value);
+      this.BTN_AUTOPAUSE.addEventListener( 'hover', () => {
+        this.LB_DESC.setItem(GameState.TLKManager.TLKStrings[42275].Value);
       });
 
-      this.BTN_GRAPHICS.addEventListener('hover', () => {
-        this.LB_DESC.clearItems();
-        this.LB_DESC.addItem(GameState.TLKManager.TLKStrings[48687].Value);
+      this.BTN_GRAPHICS.addEventListener( 'hover', () => {
+        this.LB_DESC.setItem(GameState.TLKManager.TLKStrings[48687].Value);
       });
 
-      this.BTN_SOUND.addEventListener('hover', () => {
-        this.LB_DESC.clearItems();
-        this.LB_DESC.addItem(GameState.TLKManager.TLKStrings[48688].Value);
+      this.BTN_SOUND.addEventListener( 'hover', () => {
+        this.LB_DESC.setItem(GameState.TLKManager.TLKStrings[48688].Value);
       });
 
-      this.BTN_QUIT.addEventListener('hover', () => {
-        this.LB_DESC.clearItems();
-        this.LB_DESC.addItem(GameState.TLKManager.TLKStrings[42302].Value);
+      this.BTN_QUIT.addEventListener( 'hover', () => {
+        this.LB_DESC.setItem(GameState.TLKManager.TLKStrings[42302].Value);
       });
 
       resolve();
@@ -151,5 +143,6 @@ export class MenuOptions extends K1_MenuOptions {
 
   show() {
     super.show();
+    this.LB_DESC.setItem(GameState.TLKManager.TLKStrings[42300].Value);
   }
 }

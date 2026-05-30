@@ -1,8 +1,8 @@
-import type { GameMenu } from '@/gui/GameMenu';
-import { GUIControl } from '@/gui/GUIControl';
-import { GUIControlTypeMask } from '@/enums/gui/GUIControlTypeMask';
-import type { GFFStruct } from '@/resource/GFFStruct';
-import { GUIControlType } from '@/enums/gui/GUIControlType';
+import type { GameMenu } from "@/gui/GameMenu";
+import { GUIControl } from "@/gui/GUIControl";
+import { GUIControlTypeMask } from "@/enums/gui/GUIControlTypeMask";
+import type { GFFStruct } from "@/resource/GFFStruct";
+import { GUIControlType } from "@/enums/gui/GUIControlType";
 
 /**
  * GUIPanel class.

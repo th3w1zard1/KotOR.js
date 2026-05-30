@@ -440,6 +440,8 @@ export class ForgePlaceable extends ForgeGameObject {
       const model = await KotOR.OdysseyModel3D.FromMDL(mdl, {
         context: this.context,
         lighting: true,
+        disableMatrixUpdate: false,
+        editorMode: true
       });
       this.model = model;
       this.container.add(this.model);

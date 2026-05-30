@@ -1,22 +1,5 @@
-import { BinaryReader } from '@/utility/binary/BinaryReader';
-import { BinaryWriter } from '@/utility/binary/BinaryWriter';
-import { TLKString } from '@/resource/TLKString';
-import { GameFileSystem } from '@/utility/GameFileSystem';
-import {
-  objectToTOML,
-  objectToXML,
-  objectToYAML,
-  tomlToObject,
-  xmlToObject,
-  yamlToObject,
-} from '@/utility/FormatSerialization';
-import { normalizeResRefFromArchiveSlot, RESREF_FIXED_SLOT_BYTES } from '@/resource/resRefLayout';
-
-/** Talk table (TLK) V3.0: file type and version, language id, string count, string data offset. */
-export const TLK_V30_HEADER_SIZE = 20;
-
-/** One index row: flags, sound resref (16), variances, string offset, lengths (40 bytes). */
-export const TLK_V30_INDEX_ENTRY_SIZE = 40;
+import { BinaryReader } from "@/utility/binary/BinaryReader";
+import { TLKString } from "@/resource/TLKString";
 
 /**
  * TLKObject class.
@@ -30,143 +13,83 @@ export const TLK_V30_INDEX_ENTRY_SIZE = 40;
  * @license {@link https://www.gnu.org/licenses/gpl-3.0.txt|GPLv3}
  */
 export class TLKObject {
-  file: Uint8Array | string;
-  reader: BinaryReader;
-  TLKStrings: TLKString[];
 
-  onSuccess: Function;
-  onProgress: Function;
+  TLKStrings: TLKString[] = [];
+
   FileType: string;
   FileVersion: string;
   LanguageID: number;
   StringCount: number;
   StringEntriesOffset: number;
 
-  constructor(file: Uint8Array | string = new Uint8Array(0), onSuccess?: Function, onProgress?: Function) {
-    this.file = file;
-    this.TLKStrings = [];
-    this.FileType = 'TLK ';
-    this.FileVersion = 'V3.0';
-    this.LanguageID = 0;
-    this.StringCount = 0;
-    this.StringEntriesOffset = TLK_V30_HEADER_SIZE;
-    if (typeof this.file === 'string' && this.file.length > 0) {
-      this.LoadFromDisk(this.file, onProgress)
-        .then(() => {
-          if (typeof onSuccess === 'function') onSuccess();
-        })
-        .catch(() => {
-          if (typeof onSuccess === 'function') onSuccess();
-        });
-    } else if (this.file instanceof Uint8Array && this.file.length > 0) {
-      this.LoadFromBuffer(this.file, onProgress)
-        .then(() => {
-          if (typeof onSuccess === 'function') onSuccess();
-        })
-        .catch(() => {
-          if (typeof onSuccess === 'function') onSuccess();
-        });
-    }
-  }
+  /**
+   * Parses a dialog.tlk buffer in two sequential passes:
+   *   Pass 1 — reads all 40-byte DataElement records with no random seeks.
+   *   Pass 2 — decodes string values from the string-data section using
+   *             Uint8Array.subarray() (zero-copy views) and a single TextDecoder.
+   *
+   * The BinaryReader and raw buffer are released immediately after parsing.
+   */
+  loadFromBuffer(buffer: Uint8Array): void {
+    const reader = new BinaryReader(buffer);
+    reader.seek(0);
 
-  LoadFromBuffer(buffer: Uint8Array, onProgress?: Function) {
-    return new Promise<void>((resolve, reject) => {
-      try {
-        if (buffer.length < TLK_V30_HEADER_SIZE) {
-          throw new Error('Tried to save or load an unsupported or corrupted file.');
-        }
-        this.reader = new BinaryReader(buffer);
-        this.reader.seek(0);
+    this.FileType             = reader.readChars(4);
+    this.FileVersion          = reader.readChars(4);
+    this.LanguageID           = reader.readUInt32();
+    this.StringCount          = reader.readUInt32();
+    this.StringEntriesOffset  = reader.readUInt32();
 
-        this.FileType = this.reader.readChars(4);
-        this.FileVersion = this.reader.readChars(4);
-        this.LanguageID = this.reader.readUInt32();
-        this.StringCount = this.reader.readUInt32();
-        this.StringEntriesOffset = this.reader.readUInt32();
+    // Pass 1: read all DataElement records sequentially (40 bytes each, no seeks)
+    reader.seek(20);
+    const records: {
+      flags: number;
+      soundResRef: string;
+      volVar: number;
+      pitchVar: number;
+      strOffset: number;
+      strLen: number;
+      sndLen: number;
+    }[] = new Array(this.StringCount);
 
-        const entryTableEnd = TLK_V30_HEADER_SIZE + this.StringCount * TLK_V30_INDEX_ENTRY_SIZE;
-        if (
-          this.FileType !== 'TLK ' ||
-          this.FileVersion !== 'V3.0' ||
-          this.StringEntriesOffset < entryTableEnd ||
-          entryTableEnd > buffer.length
-        ) {
-          throw new Error('Tried to save or load an unsupported or corrupted file.');
-        }
-
-        this.reader.seek(TLK_V30_HEADER_SIZE);
-        for (let i = 0, len = this.StringCount; i < len; i++) {
-          const flags = this.reader.readUInt32();
-          const soundResRef = normalizeResRefFromArchiveSlot(this.reader.readChars(RESREF_FIXED_SLOT_BYTES));
-          const volumeVariance = this.reader.readUInt32();
-          const pitchVariance = this.reader.readUInt32();
-          const stringOffset = this.reader.readUInt32();
-          const stringLength = this.reader.readUInt32();
-          const soundLength = this.reader.readUInt32();
-
-          const absoluteStringOffset = this.StringEntriesOffset + stringOffset;
-          if (absoluteStringOffset < this.StringEntriesOffset || absoluteStringOffset + stringLength > buffer.length) {
-            throw new Error('Tried to save or load an unsupported or corrupted file.');
-          }
-
-          this.TLKStrings[i] = new TLKString(
-            flags,
-            soundResRef,
-            volumeVariance,
-            pitchVariance,
-            absoluteStringOffset,
-            stringLength,
-            soundLength,
-            null
-          );
-
-          let pos = this.reader.tell();
-          this.reader.seek(this.TLKStrings[i].StringOffset);
-          //console.log(this.TLKStrings[i].StringOffset);
-          this.TLKStrings[i].Value = this.reader.readChars(this.TLKStrings[i].StringLength).replace(/\0[\s\S]*$/g, '');
-          this.reader.seek(pos);
-
-          if (typeof onProgress == 'function') onProgress(i + 1, this.StringCount);
-        }
-        resolve();
-      } catch (e) {
-        reject(e);
-      }
-    });
-  }
-
-  LoadFromDisk(resource_path: string, onProgress?: Function) {
-    return new Promise<void>((resolve, reject) => {
-      GameFileSystem.readFile(resource_path)
-        .then((buffer) => {
-          this.LoadFromBuffer(buffer, onProgress)
-            .then(() => {
-              resolve();
-            })
-            .catch(() => {
-              reject();
-            });
-        })
-        .catch((err) => {
-          reject();
-        });
-    });
-  }
-
-  GetStringById(id: number, onReturn?: (value: string) => void): string {
-    if (this.TLKStrings[id] != null) {
-      if (this.TLKStrings[id].Value == null) {
-        this.TLKStrings[id].GetValue(this.reader, onReturn);
-      } else {
-        if (onReturn != null) onReturn(this.TLKStrings[id].Value);
-      }
+    for(let i = 0; i < this.StringCount; i++){
+      records[i] = {
+        flags:       reader.readUInt32(),
+        soundResRef: reader.readChars(16).replace(/\0[\s\S]*$/g, ''),
+        volVar:      reader.readUInt32(),
+        pitchVar:    reader.readUInt32(),
+        strOffset:   reader.readUInt32(),
+        strLen:      reader.readUInt32(),
+        sndLen:      reader.readUInt32(),
+      };
     }
 
-    try {
-      return this.TLKStrings[id].Value;
-    } catch (e) {
-      return '';
+    // Pass 2: decode string values using zero-copy subarray views
+    const strSection = buffer.subarray(this.StringEntriesOffset);
+    const decoder = new TextDecoder('latin1');
+
+    this.TLKStrings = new Array(this.StringCount);
+    for(let i = 0; i < this.StringCount; i++){
+      const r = records[i];
+      const value = r.strLen > 0
+        ? decoder.decode(strSection.subarray(r.strOffset, r.strOffset + r.strLen)).replace(/\0[\s\S]*$/g, '')
+        : '';
+      this.TLKStrings[i] = new TLKString(
+        r.flags,
+        r.soundResRef,
+        r.volVar,
+        r.pitchVar,
+        this.StringEntriesOffset + r.strOffset,
+        r.strLen,
+        r.sndLen,
+        value
+      );
     }
+    // Release the reader and buffer — all values are eagerly loaded.
+  }
+
+  GetStringById(id: number): string {
+    return this.TLKStrings[id]?.Value ?? '';
   }
 
   size(): number {
@@ -197,154 +120,4 @@ export class TLKObject {
     this.TLKStrings.push(tlkString);
   }
 
-  Search(term = '') {
-    return this.TLKStrings.filter((tlk) => {
-      if ((tlk.Value ?? '').indexOf(term) >= 0) {
-        return true;
-      }
-    }).map((tlk) => {
-      return { tlk: tlk, value: tlk.Value, index: this.TLKStrings.indexOf(tlk) };
-    });
-  }
-
-  toJSON(): TLKJSONData {
-    const entries = this.TLKStrings.map((entry, index) => ({
-      index,
-      flags: entry.flags ?? 0,
-      value: entry.Value ?? '',
-      soundResRef: entry.SoundResRef ?? '',
-      volumeVariance: entry.VolumeVariance ?? 0,
-      pitchVariance: entry.PitchVariance ?? 0,
-      soundLength: entry.SoundLength ?? 0,
-    }));
-
-    return {
-      fileType: this.FileType || 'TLK ',
-      fileVersion: this.FileVersion || 'V3.0',
-      languageId: this.LanguageID ?? 0,
-      stringCount: entries.length,
-      entries,
-    };
-  }
-
-  fromJSON(json: string | TLKJSONData): void {
-    const source = typeof json === 'string' ? (JSON.parse(json) as TLKJSONData) : json;
-    this.FileType = (source.fileType || 'TLK ').padEnd(4).slice(0, 4);
-    this.FileVersion = (source.fileVersion || 'V3.0').padEnd(4).slice(0, 4);
-    this.LanguageID = source.languageId ?? 0;
-    this.TLKStrings = (source.entries ?? []).map((entry) => {
-      const value = entry.value ?? '';
-      return new TLKString(
-        entry.flags ?? 0,
-        entry.soundResRef ?? '',
-        entry.volumeVariance ?? 0,
-        entry.pitchVariance ?? 0,
-        0,
-        value.length,
-        entry.soundLength ?? 0,
-        value
-      );
-    });
-    this.StringCount = this.TLKStrings.length;
-    this.StringEntriesOffset = TLK_V30_HEADER_SIZE + this.StringCount * TLK_V30_INDEX_ENTRY_SIZE;
-  }
-
-  static fromJSON(json: string | TLKJSONData): TLKObject {
-    const tlk = new TLKObject(new Uint8Array(0));
-    tlk.fromJSON(json);
-    return tlk;
-  }
-
-  toXML(): string {
-    return objectToXML(this.toJSON());
-  }
-
-  fromXML(xml: string): void {
-    this.fromJSON(xmlToObject(xml) as TLKJSONData);
-  }
-
-  static fromXML(xml: string): TLKObject {
-    const tlk = new TLKObject(new Uint8Array(0));
-    tlk.fromXML(xml);
-    return tlk;
-  }
-
-  toYAML(): string {
-    return objectToYAML(this.toJSON());
-  }
-
-  fromYAML(yaml: string): void {
-    this.fromJSON(yamlToObject(yaml) as TLKJSONData);
-  }
-
-  static fromYAML(yaml: string): TLKObject {
-    const tlk = new TLKObject(new Uint8Array(0));
-    tlk.fromYAML(yaml);
-    return tlk;
-  }
-
-  toTOML(): string {
-    return objectToTOML(this.toJSON());
-  }
-
-  fromTOML(toml: string): void {
-    this.fromJSON(tomlToObject(toml) as TLKJSONData);
-  }
-
-  static fromTOML(toml: string): TLKObject {
-    const tlk = new TLKObject(new Uint8Array(0));
-    tlk.fromTOML(toml);
-    return tlk;
-  }
-
-  /**
-   * Serialize the TLK to a buffer (TLK file format).
-   * Header: FileType(4), FileVersion(4), LanguageID(4), StringCount(4), StringEntriesOffset(4).
-   * Then StringCount entries of 40 bytes each: flags(4), SoundResRef(16), VolumeVariance(4), PitchVariance(4), StringOffset(4), StringLength(4), SoundLength(4).
-   * Then string data block starting at StringEntriesOffset.
-   */
-  toBuffer(): Uint8Array {
-    const stringCount = this.TLKStrings.length;
-    const stringEntriesOffset = TLK_V30_HEADER_SIZE + stringCount * TLK_V30_INDEX_ENTRY_SIZE;
-
-    let stringDataSize = 0;
-    const stringLengths: number[] = [];
-    for (let i = 0; i < stringCount; i++) {
-      const value = this.TLKStrings[i].Value != null ? String(this.TLKStrings[i].Value) : '';
-      stringLengths.push(value.length);
-      stringDataSize += value.length;
-    }
-
-    const totalSize = stringEntriesOffset + stringDataSize;
-    const writer = new BinaryWriter(new Uint8Array(totalSize));
-
-    writer.writeChars((this.FileType || 'TLK ').padEnd(4).slice(0, 4));
-    writer.writeChars((this.FileVersion || 'V3.0').padEnd(4).slice(0, 4));
-    writer.writeUInt32(this.LanguageID ?? 0);
-    writer.writeUInt32(stringCount);
-    writer.writeUInt32(stringEntriesOffset);
-
-    let stringOffset = 0;
-    for (let i = 0; i < stringCount; i++) {
-      const entry = this.TLKStrings[i];
-      writer.writeUInt32(entry.flags ?? 0);
-      const soundResRef = (entry.SoundResRef ?? '')
-        .replace(/\0[\s\S]*$/g, '')
-        .padEnd(16, '\0')
-        .slice(0, 16);
-      writer.writeChars(soundResRef);
-      writer.writeUInt32(entry.VolumeVariance ?? 0);
-      writer.writeUInt32(entry.PitchVariance ?? 0);
-      writer.writeUInt32(stringOffset);
-      writer.writeUInt32(stringLengths[i]);
-      writer.writeUInt32(entry.SoundLength ?? 0);
-      stringOffset += stringLengths[i];
-    }
-
-    for (let i = 0; i < stringCount; i++) {
-      writer.writeChars(this.TLKStrings[i].Value != null ? String(this.TLKStrings[i].Value) : '');
-    }
-
-    return writer.buffer;
-  }
 }

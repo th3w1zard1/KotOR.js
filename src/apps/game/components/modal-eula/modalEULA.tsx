@@ -31,11 +31,11 @@ export const ModalEULA = () => {
   };
 
   return (
-    <KotORModal
-      title="EULA"
-      show={showEULAModal}
+    <KotORModal 
+      title="EULA" 
+      show={showEULAModal} 
       className="forge-style-modal eula-modal"
-      onCancel={onCancel}
+      onCancel={onCancel} 
       onOk={onOk}
     >
       {<EULA />}

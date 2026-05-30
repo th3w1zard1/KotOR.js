@@ -20,8 +20,8 @@ export class BlurLengthController extends OdysseyController {
     super(controller);
   }
 
-  setFrame(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, data: IOdysseyControllerFrameGeneric) {
-    if (manager.modelNode.emitter) {
+  setFrame(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, data: IOdysseyControllerFrameGeneric){
+    if(manager.modelNode.emitter){
       const em = manager.modelNode.emitter;
       em.blurLength = data.value;
       em.material.uniforms.blurLength.value = data.value;
@@ -29,14 +29,8 @@ export class BlurLengthController extends OdysseyController {
     }
   }
 
-  animate(
-    manager: OdysseyModelAnimationManager,
-    anim: OdysseyModelAnimation,
-    last: IOdysseyControllerFrameGeneric,
-    next: IOdysseyControllerFrameGeneric,
-    fl: number = 0
-  ) {
-    if (manager.modelNode.emitter) {
+  animate(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, last: IOdysseyControllerFrameGeneric, next: IOdysseyControllerFrameGeneric, fl: number = 0){
+    if(manager.modelNode.emitter){
       const em = manager.modelNode.emitter;
       const v = OdysseyController.lerp1(last, next, fl);
       em.blurLength = v;

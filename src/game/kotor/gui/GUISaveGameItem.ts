@@ -19,8 +19,8 @@ export class GUISaveGameItem extends GUIProtoItem {
     super(menu, control, parent, scale);
   }
 
-  createControl() {
-    try {
+  createControl(){
+    try{
       this.extent.height = 48;
       super.createControl();
       this.setText(this.node.getFullName());

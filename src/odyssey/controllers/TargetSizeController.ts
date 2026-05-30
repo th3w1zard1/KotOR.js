@@ -28,14 +28,8 @@ export class TargetSizeController extends OdysseyController {
     }
   }
 
-  animate(
-    manager: OdysseyModelAnimationManager,
-    anim: OdysseyModelAnimation,
-    last: IOdysseyControllerFrameGeneric,
-    next: IOdysseyControllerFrameGeneric,
-    _fl: number = 0
-  ) {
-    if (manager.modelNode.emitter) {
+  animate(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, last: IOdysseyControllerFrameGeneric, next: IOdysseyControllerFrameGeneric, fl: number = 0){
+    if(manager.modelNode.emitter){
       manager.modelNode.emitter.targetSize = OdysseyController.lerp1(last, next, fl);
     }
   }

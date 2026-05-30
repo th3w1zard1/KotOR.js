@@ -1,32 +1,32 @@
-import * as THREE from 'three';
-import { Anchor } from '@/enums/gui/Anchor';
-import { GUIControlAlignment } from '@/enums/gui/GUIControlAlignment';
-import { IDPadTarget } from '@/interface/gui/IDPadTarget';
-import { IGUIControlBorder } from '@/interface/gui/IGUIControlBorder';
-import { IGUIControlEventListeners } from '@/interface/gui/IGUIControlEventListeners';
-import { IGUIControlExtent } from '@/interface/gui/IGUIControlExtent';
-import { IGUIControlMoveTo } from '@/interface/gui/IGUIControlMoveTo';
-import { IGUIControlText } from '@/interface/gui/IGUIControlText';
-import { GFFStruct } from '@/resource/GFFStruct';
-import { GameState } from '@/GameState';
-import { TextureLoader } from '@/loaders';
-import { TextureType } from '@/enums/loaders/TextureType';
-import { OdysseyTexture } from '@/three/odyssey/OdysseyTexture';
-import { GameEngineType } from '@/enums/engine';
-import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { KeyMapper, Mouse } from '@/controls';
-import { IGUIControlColors } from '@/interface/gui/IGUIControlColors';
-import { GUIControlTypeMask } from '@/enums/gui/GUIControlTypeMask';
-import { GUIControlEventFactory } from '@/gui/GUIControlEventFactory';
-import type { GameMenu } from '@/gui/GameMenu';
-import { BitWise } from '@/utility/BitWise';
-import { GUIListBox } from '@/gui/GUIListBox';
-import { GUIFont } from '@/gui/GUIFont';
-import { GUIControlEvent } from '@/gui/GUIControlEvent';
-import { GUIControlType } from '@/enums/gui/GUIControlType';
-import { KeyMapAction } from '@/enums/controls/KeyMapAction';
-import { GFFField } from '@/resource/GFFField';
-import { GFFDataType } from '@/enums/resource/GFFDataType';
+import * as THREE from "three";
+import { Anchor } from "@/enums/gui/Anchor";
+import { GUIControlAlignment } from "@/enums/gui/GUIControlAlignment";
+import { IDPadTarget } from "@/interface/gui/IDPadTarget";
+import { IGUIControlBorder } from "@/interface/gui/IGUIControlBorder";
+import { IGUIControlEventListeners } from "@/interface/gui/IGUIControlEventListeners";
+import { IGUIControlExtent } from "@/interface/gui/IGUIControlExtent";
+import { IGUIControlMoveTo } from "@/interface/gui/IGUIControlMoveTo";
+import { IGUIControlText } from "@/interface/gui/IGUIControlText";
+import { GFFStruct } from "@/resource/GFFStruct";
+import { GameState } from "@/GameState";
+import { TextureLoader } from "@/loaders";
+import { TextureType } from "@/enums/loaders/TextureType";
+import { OdysseyTexture } from "@/three/odyssey/OdysseyTexture";
+import { GameEngineType } from "@/enums/engine";
+import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { KeyMapper, Mouse } from "@/controls";
+import { IGUIControlColors } from "@/interface/gui/IGUIControlColors";
+import { GUIControlTypeMask } from "@/enums/gui/GUIControlTypeMask";
+import { GUIControlEventFactory } from "@/gui/GUIControlEventFactory";
+import type { GameMenu } from "@/gui/GameMenu";
+import { BitWise } from "@/utility/BitWise";
+import { GUIListBox } from "@/gui/GUIListBox";
+import { GUIFont } from "@/gui/GUIFont";
+import { GUIControlEvent } from "@/gui/GUIControlEvent";
+import { GUIControlType } from "@/enums/gui/GUIControlType";
+import { KeyMapAction } from "@/enums/controls/KeyMapAction";
+import { GFFField } from "@/resource/GFFField";
+import { GFFDataType } from "@/enums/resource/GFFDataType";
 
 const itemSize = 2;
 const box = { min: [0, 0], max: [0, 0] };
@@ -172,6 +172,38 @@ export class GUIControl {
   onSelect: Function;
 
   userData: any = {};
+
+  /** When true, the control will be rebuilt on the next update. */
+  needsUpdate: boolean = false;
+
+  /** Counts outstanding texture loads started by initTextures() and subclass overrides. */
+  private _pendingTextureCount: number = 0;
+
+  /** True when all texture slots queued by this control have finished loading. */
+  get isTextureReady(): boolean {
+    return this._pendingTextureCount === 0;
+  }
+
+  /** Called when _pendingTextureCount reaches zero. Override in subclasses for sequenced secondary loads. */
+  protected onTexturesReady(): void {
+    this.invalidateListRtt();
+  }
+
+  /** Increment pending texture count before an enQueue; call this helper to decrement and fire onTexturesReady when done. */
+  protected _beginTextureLoad(): void {
+    this._pendingTextureCount++;
+  }
+
+  protected _endTextureLoad(): void {
+    if (this._pendingTextureCount > 0) {
+      this._pendingTextureCount--;
+    }
+    if (this._pendingTextureCount === 0) {
+      this.onTexturesReady();
+    }
+  }
+  
+  constructor(menu: GameMenu, control: GFFStruct, parent: GUIControl|undefined, scale: boolean = false){
 
   /** When true, the control will be rebuilt on the next update. */
   needsUpdate: boolean = false;
@@ -449,6 +481,24 @@ export class GUIControl {
 
   setList(list: GUIListBox) {
     this.list = list;
+    for (let i = 0; i < this.children.length; i++) {
+      const child = this.children[i];
+      if (child && child !== list && child !== list.scrollbar) {
+        child.setList(list);
+      }
+    }
+  }
+
+  /** Marks the owning {@link GUIListBox} RTT dirty after async border/highlight textures load. */
+  invalidateListRtt(): void {
+    let control: GUIControl | undefined = this;
+    while (control) {
+      if (control.list) {
+        control.list.markListRttDirty();
+        return;
+      }
+      control = control.parent as GUIControl | undefined;
+    }
   }
 
   initInputListeners() {
@@ -544,12 +594,262 @@ export class GUIControl {
     }
   }
 
-  setExtentLeft(left: number) {
-    this.extent.left = left;
-    if (this.control.hasField('EXTENT')) {
+  setExtentTop(top: number){
+    this.extent.top = top;
+    if(this.control.hasField('EXTENT')){
       const extent = this.control.getFieldByLabel('EXTENT')?.getChildStructs()[0];
-      if (extent) {
+      if(extent){
+        extent.getFieldByLabel('TOP')?.setValue(top);
+      }
+    }
+  }
+
+  setExtentLeft(left: number){
+    this.extent.left = left;
+    if(this.control.hasField('EXTENT')){
+      const extent = this.control.getFieldByLabel('EXTENT')?.getChildStructs()[0];
+      if(extent){
         extent.getFieldByLabel('LEFT')?.setValue(left);
+      }
+    }
+  }
+
+  setExtentWidth(width: number){
+    this.extent.width = width;
+    if(this.control.hasField('EXTENT')){
+      const extent = this.control.getFieldByLabel('EXTENT')?.getChildStructs()[0];
+      if(extent){
+        extent.getFieldByLabel('WIDTH')?.setValue(width);
+      }
+    }
+  }
+
+  setExtentHeight(height: number){
+    this.extent.height = height;
+    if(this.control.hasField('EXTENT')){
+      const extent = this.control.getFieldByLabel('EXTENT')?.getChildStructs()[0];
+      if(extent){
+        extent.getFieldByLabel('HEIGHT')?.setValue(height);
+      }
+    }
+  }
+
+  setControlType(type: number){
+    this.type = type;
+    if(this.control.hasField('CONTROLTYPE')){
+      this.control.getFieldByLabel('CONTROLTYPE')?.setValue(type);
+    }else{
+      this.control.addField(new GFFField(GFFDataType.INT, 'CONTROLTYPE', type));
+    }
+  }
+
+  /**
+   * Re-applies data from {@link control} after GFF edits in Forge (no full menu rebuild).
+   * Safe to call after mutating fields on this control's `GFFStruct`.
+   */
+  syncFromGFFPartial(): void {
+    this.initProperties();
+    this.calculatePosition();
+    this.resizeControl();
+    if(this.hasText && this.text.texture){
+      this.buildText();
+    }
+  }
+
+  buildDefaultControl(){
+    const control = new GFFStruct();
+    //build the default control structure
+    const extent = new GFFStruct();
+    extent.addField(new GFFField(GFFDataType.INT, 'TOP', 0));
+    extent.addField(new GFFField(GFFDataType.INT, 'LEFT', 0));
+    extent.addField(new GFFField(GFFDataType.INT, 'WIDTH', 0));
+    extent.addField(new GFFField(GFFDataType.INT, 'HEIGHT', 0));
+    control.addField(new GFFField(GFFDataType.STRUCT, 'EXTENT', extent));
+    //build the default border structure
+    const border = new GFFStruct();
+    border.addField(new GFFField(GFFDataType.VECTOR, 'COLOR', this.defaultColor));
+    border.addField(new GFFField(GFFDataType.INT, 'DIMENSION', 0));
+    border.addField(new GFFField(GFFDataType.INT, 'CORNER', 0));
+    border.addField(new GFFField(GFFDataType.INT, 'EDGE', 0));
+    border.addField(new GFFField(GFFDataType.RESREF, 'FILL', ''));
+    border.addField(new GFFField(GFFDataType.INT, 'FILLSTYLE', 0));
+    border.addField(new GFFField(GFFDataType.INT, 'INNEROFFSET', 0)); 
+    if(GameState.GameKey == GameEngineType.TSL){
+      border.addField(new GFFField(GFFDataType.INT, 'INNEROFFSETY', 0));
+    }
+    border.addField(new GFFField(GFFDataType.BYTE, 'PULSING', 0));
+    control.addField(new GFFField(GFFDataType.STRUCT, 'BORDER', border));
+    //build the default text structure
+    const text = new GFFStruct();
+    text.addField(new GFFField(GFFDataType.RESREF, 'FONT', ''));
+    text.addField(new GFFField(GFFDataType.DWORD, 'STRREF', 0));
+    text.addField(new GFFField(GFFDataType.INT, 'ALIGNMENT', GUIControlAlignment.HorizontalCenter | GUIControlAlignment.VerticalCenter));
+    text.addField(new GFFField(GFFDataType.BYTE, 'PULSING', 0));
+    text.addField(new GFFField(GFFDataType.VECTOR, 'COLOR', this.defaultColor));
+    control.addField(new GFFField(GFFDataType.STRUCT, 'TEXT', text));
+    //build the default highlight structure
+    const highlight = new GFFStruct();
+    highlight.addField(new GFFField(GFFDataType.VECTOR, 'COLOR', this.defaultHighlightColor));
+    highlight.addField(new GFFField(GFFDataType.INT, 'DIMENSION', 0));
+    highlight.addField(new GFFField(GFFDataType.INT, 'CORNER', 0));
+    highlight.addField(new GFFField(GFFDataType.RESREF, 'EDGE', ''));
+    highlight.addField(new GFFField(GFFDataType.RESREF, 'FILL', ''));
+    highlight.addField(new GFFField(GFFDataType.INT, 'FILLSTYLE', 0));
+    highlight.addField(new GFFField(GFFDataType.INT, 'INNEROFFSET', 0));
+    if(GameState.GameKey == GameEngineType.TSL){
+      highlight.addField(new GFFField(GFFDataType.INT, 'INNEROFFSETY', 0));
+    }
+    highlight.addField(new GFFField(GFFDataType.BYTE, 'PULSING', 0));
+    control.addField(new GFFField(GFFDataType.STRUCT, 'HILIGHT', highlight));
+    //build the default moveTo structure
+    const moveTo = new GFFStruct();
+    moveTo.addField(new GFFField(GFFDataType.INT, 'DOWN', -1));
+    moveTo.addField(new GFFField(GFFDataType.INT, 'LEFT', -1));
+    moveTo.addField(new GFFField(GFFDataType.INT, 'RIGHT', -1));
+    moveTo.addField(new GFFField(GFFDataType.INT, 'UP', -1));
+    control.addField(new GFFField(GFFDataType.STRUCT, 'MOVETO', moveTo));
+    //build the default control structure
+    control.addField(new GFFField(GFFDataType.INT, 'TYPE', 0));
+    control.addField(new GFFField(GFFDataType.RESREF, 'TAG', ''));
+    control.addField(new GFFField(GFFDataType.INT, 'ID', 0));
+    control.addField(new GFFField(GFFDataType.INT, 'Obj_Locked', 0));
+    control.addField(new GFFField(GFFDataType.CEXOSTRING, 'Obj_Parent', ''));
+    control.addField(new GFFField(GFFDataType.INT, 'Obj_ParentID', this.parent?.id || -1));
+    return control;
+  }
+
+  initProperties(){
+    if(!(this.control instanceof GFFStruct)){
+      this.control = this.buildDefaultControl();
+    }
+
+    const control = this.control;
+    this.type = ( control.hasField('CONTROLTYPE') ? control.getFieldByLabel('CONTROLTYPE')?.getValue() : -1 );
+    this.widget.name = this.name = ( control.hasField('TAG') ? control.getFieldByLabel('TAG')?.getValue() : -1 );
+    this.id = ( control.hasField('ID') ? control.getFieldByLabel('ID')?.getValue() : -1 );
+    this.objectLocked = ( control.hasField('Obj_Locked') ? control.getFieldByLabel('Obj_Locked')?.getValue() : -1 );
+    this.objectParent = ( control.hasField('Obj_Parent') ? control.getFieldByLabel('Obj_Parent')?.getValue() : -1 );
+    this.objectParentId = ( control.hasField('Obj_ParentID') ? control.getFieldByLabel('Obj_ParentID')?.getValue() : -1 );
+
+    this.padding = ( control.hasField('PADDING') ? control.getFieldByLabel('PADDING')?.getValue() : 0 );
+
+    //Extent
+    this.hasExtent = control.hasField('EXTENT');
+    if(this.hasExtent){
+      let extent = control.getFieldByLabel('EXTENT')?.getChildStructs()[0];
+      if(extent){
+        this.extent.top = extent.getFieldByLabel('TOP')?.getValue();
+        this.extent.left = extent.getFieldByLabel('LEFT')?.getValue();
+        this.extent.width = extent.getFieldByLabel('WIDTH')?.getValue();
+        this.extent.height = extent.getFieldByLabel('HEIGHT')?.getValue();
+      }
+    }
+
+    //Border
+    this.hasBorder = control.hasField('BORDER');
+    if(this.hasBorder){
+      let border = control.getFieldByLabel('BORDER')?.getChildStructs()[0];
+      if(border){
+        if(border.hasField('COLOR')){
+          let color = border.getFieldByLabel('COLOR')?.getVector();
+          if(color && (color.x * color.y * color.z) < 1 ){
+            if(this.border.color && this.border.fill.material){
+              this.border.color.setRGB(color.x, color.y, color.z);
+              this.border.fill.material.uniforms.diffuse.value.set(this.border.color);
+            }
+          }
+        }
+
+        if(typeof this.border.color === 'undefined'){
+          this.border.color = new THREE.Color(1, 1, 1); //this.defaultColor;
+        }
+  
+        this.border.dimension = border.getFieldByLabel('DIMENSION')?.getValue() || 0;
+        this.border.corner = border.getFieldByLabel('CORNER')?.getValue();
+        this.border.edge = border.getFieldByLabel('EDGE')?.getValue();
+        this.border.fill.texture = border.getFieldByLabel('FILL')?.getValue();
+        this.border.fillstyle = border.getFieldByLabel('FILLSTYLE')?.getValue() || 0;
+        this.border.inneroffset = this.border.inneroffsety = border.getFieldByLabel('INNEROFFSET')?.getValue() || 0;
+
+        if(border.hasField('INNEROFFSETY'))
+          this.border.inneroffsety = border.getFieldByLabel('INNEROFFSETY')?.getValue();
+
+        this.border.pulsing = border.getFieldByLabel('PULSING')?.getValue() || 0;
+      }
+
+    }
+
+    //Text
+    this.hasText = control.hasField('TEXT');
+    if(this.hasText){
+      let text = control.getFieldByLabel('TEXT')?.getChildStructs()[0];
+      if(text){
+        this.text.font = text.getFieldByLabel('FONT')?.getValue();
+        this.text.strref = text.getFieldByLabel('STRREF')?.getValue();
+        this.text.text = ( text.hasField('TEXT') ? this.menu.gameStringParse(text.getFieldByLabel('TEXT')?.getValue()) : '' );
+        if(this.text.text == ''){
+          this.text.text = this.menu.gameStringParse(GameState.TLKManager.TLKStrings[this.text.strref]?.Value || '');
+        }
+        this.text.alignment = text.getFieldByLabel('ALIGNMENT')?.getValue();
+        this.text.pulsing = text.getFieldByLabel('PULSING')?.getValue();
+
+        if(this.text.font == 'fnt_d16x16'){
+          this.text.font = 'fnt_d16x16b';
+        }
+
+        if(text.hasField('COLOR')){
+          let color = text.getFieldByLabel('COLOR')?.getVector();
+          if(color) this.text.color.setRGB(color.x, color.y, color.z)
+        }
+
+        if(typeof this.text.color === 'undefined'){
+          this.text.color = this.defaultColor.clone();
+        }
+      }
+    }
+
+    //Highlight
+    this.hasHighlight = control.hasField('HILIGHT');
+    if(this.hasHighlight){
+      let highlight = control.getFieldByLabel('HILIGHT')?.getChildStructs()[0];
+      if(highlight){
+        if(highlight.hasField('COLOR')){
+          let color = highlight.getFieldByLabel('COLOR')?.getVector();
+          if(color && (color.x * color.y * color.z) < 1 ){
+            if(this.highlight.color && this.highlight.fill.material){
+              this.highlight.color.setRGB(color.x, color.y, color.z);
+              this.highlight.fill.material.uniforms.diffuse.value.set(this.highlight.color);
+            }
+          }
+        }
+  
+        if(typeof this.highlight.color === 'undefined'){
+          this.highlight.color = new THREE.Color(1, 1, 1); //this.defaultColor;
+        }
+
+        this.highlight.dimension = highlight.getFieldByLabel('DIMENSION')?.getValue() || 0;
+        this.highlight.corner = highlight.getFieldByLabel('CORNER')?.getValue() || '';
+        this.highlight.edge = highlight.getFieldByLabel('EDGE')?.getValue() || '';
+        this.highlight.fill.texture = highlight.getFieldByLabel('FILL')?.getValue() || '';
+        this.highlight.fillstyle = highlight.getFieldByLabel('FILLSTYLE')?.getValue() || 0;
+        this.highlight.inneroffset = this.highlight.inneroffsety = highlight.getFieldByLabel('INNEROFFSET')?.getValue() || 0;
+
+        if(highlight.hasField('INNEROFFSETY'))
+          this.highlight.inneroffsety = highlight.getFieldByLabel('INNEROFFSETY')?.getValue();
+
+        this.highlight.pulsing = highlight.getFieldByLabel('PULSING')?.getValue() || 0;
+      }
+    }
+
+    //Moveto
+    this.hasMoveTo = control.hasField('MOVETO');
+    if(this.hasMoveTo){
+      let moveTo = control.getFieldByLabel('MOVETO')?.getChildStructs()[0];
+      if(moveTo){
+        this.moveTo.down = moveTo.getFieldByLabel('DOWN')?.getValue();
+        this.moveTo.left = moveTo.getFieldByLabel('LEFT')?.getValue();
+        this.moveTo.right = moveTo.getFieldByLabel('RIGHT')?.getValue();
+        this.moveTo.up = moveTo.getFieldByLabel('UP')?.getValue();
       }
     }
   }
@@ -809,15 +1109,13 @@ export class GUIControl {
 
     if (this.border.edge != '') {
       this.border.edge_material.visible = false;
-      TextureLoader.enQueue(
-        this.border.edge,
-        this.border.edge_material,
-        TextureType.TEXTURE,
-        (texture: OdysseyTexture) => {
-          if (!texture) {
-            console.log('initTextures', this.border.edge, texture);
-            return;
-          }
+      this._beginTextureLoad();
+      TextureLoader.enQueue(this.border.edge, this.border.edge_material, TextureType.TEXTURE, (texture: OdysseyTexture) => {
+        if(!texture){
+          console.log('initTextures', this.border.edge, texture);
+          this._endTextureLoad();
+          return;
+        }
 
           texture.wrapS = THREE.ClampToEdgeWrapping;
           texture.wrapT = THREE.ClampToEdgeWrapping;
@@ -831,23 +1129,26 @@ export class GUIControl {
           this.border.edge_material.visible = true;
           if (typeof this.borderEnabled == 'undefined') this.borderEnabled = true;
         }
-      );
-    } else {
+        texture.needsUpdate = true;
+        this.border.edge_material.visible = true;
+        if(typeof this.borderEnabled == 'undefined')
+          this.borderEnabled = true;
+        this._endTextureLoad();
+      });
+    }else{
       this.border.edge_material.visible = false;
       this.borderEnabled = false;
     }
 
     if (this.border.corner != '') {
       this.border.corner_material.visible = false;
-      TextureLoader.enQueue(
-        this.border.corner,
-        this.border.corner_material,
-        TextureType.TEXTURE,
-        (texture: OdysseyTexture) => {
-          if (!texture) {
-            console.log('initTextures', this.border.corner, texture);
-            return;
-          }
+      this._beginTextureLoad();
+      TextureLoader.enQueue(this.border.corner, this.border.corner_material, TextureType.TEXTURE, (texture: OdysseyTexture) => {
+        if(!texture){
+          console.log('initTextures', this.border.corner, texture);
+          this._endTextureLoad();
+          return;
+        }
 
           texture.wrapS = THREE.ClampToEdgeWrapping;
           texture.wrapT = THREE.ClampToEdgeWrapping;
@@ -861,24 +1162,26 @@ export class GUIControl {
           this.border.corner_material.visible = true;
           if (typeof this.borderEnabled == 'undefined') this.borderEnabled = true;
         }
-      );
-    } else {
+        texture.needsUpdate = true;
+        this.border.corner_material.visible = true;
+        if(typeof this.borderEnabled == 'undefined')
+          this.borderEnabled = true;
+        this._endTextureLoad();
+      });
+    }else{
       this.border.corner_material.visible = false;
       this.borderEnabled = false;
     }
 
-    if (this.border.fill.texture != '') {
-      this.border.fill.material.transparent = true;
+    if(this.border.fill.texture != ''){
       this.border.fill.material.visible = false;
-      TextureLoader.enQueue(
-        this.border.fill.texture,
-        this.border.fill.material,
-        TextureType.TEXTURE,
-        (texture: OdysseyTexture) => {
-          if (!texture) {
-            this.border.fill.material.visible = false;
-            return;
-          }
+      this._beginTextureLoad();
+      TextureLoader.enQueue(this.border.fill.texture, this.border.fill.material, TextureType.TEXTURE, (texture: OdysseyTexture) => {
+        if(!(texture)){
+          this.border.fill.material.visible = false;
+          this._endTextureLoad();
+          return;
+        }
 
           texture.anisotropy = 1;
           texture.minFilter = THREE.LinearFilter;
@@ -890,8 +1193,13 @@ export class GUIControl {
           this.border.fill.material.visible = true;
           if (typeof this.borderFillEnabled == 'undefined') this.borderFillEnabled = true;
         }
-      );
-    } else {
+        texture.needsUpdate = true;
+        this.border.fill.material.visible = true;
+        if(typeof this.borderFillEnabled == 'undefined')
+          this.borderFillEnabled = true;
+        this._endTextureLoad();
+      });
+    }else{
       this.border.fill.material.visible = false;
       this.borderFillEnabled = false;
     }
@@ -902,15 +1210,13 @@ export class GUIControl {
 
     if (this.highlight.edge != '') {
       this.highlight.edge_material.visible = false;
-      TextureLoader.enQueue(
-        this.highlight.edge,
-        this.highlight.edge_material,
-        TextureType.TEXTURE,
-        (texture: OdysseyTexture) => {
-          if (!texture) {
-            console.log('initTextures', this.highlight.edge, texture);
-            return;
-          }
+      this._beginTextureLoad();
+      TextureLoader.enQueue(this.highlight.edge, this.highlight.edge_material, TextureType.TEXTURE, (texture: OdysseyTexture) => {
+        if(!texture){
+          console.log('initTextures', this.highlight.edge, texture);
+          this._endTextureLoad();
+          return;
+        }
 
           texture.wrapS = THREE.ClampToEdgeWrapping;
           texture.wrapT = THREE.ClampToEdgeWrapping;
@@ -924,23 +1230,26 @@ export class GUIControl {
           this.highlight.edge_material.visible = true;
           if (typeof this.highlightEnabled == 'undefined') this.highlightEnabled = true;
         }
-      );
-    } else {
+        texture.needsUpdate = true;
+        this.highlight.edge_material.visible = true;
+        if(typeof this.highlightEnabled == 'undefined')
+          this.highlightEnabled = true;
+        this._endTextureLoad();
+      });
+    }else{
       this.highlight.edge_material.visible = false;
       this.highlightEnabled = false;
     }
 
     if (this.highlight.corner != '') {
       this.highlight.corner_material.visible = false;
-      TextureLoader.enQueue(
-        this.highlight.corner,
-        this.highlight.corner_material,
-        TextureType.TEXTURE,
-        (texture: OdysseyTexture) => {
-          if (!texture) {
-            console.log('initTextures', this.highlight.corner, texture);
-            return;
-          }
+      this._beginTextureLoad();
+      TextureLoader.enQueue(this.highlight.corner, this.highlight.corner_material, TextureType.TEXTURE, (texture: OdysseyTexture) => {
+        if(!texture){
+          console.log('initTextures', this.highlight.corner, texture);
+          this._endTextureLoad();
+          return;
+        }
 
           texture.wrapS = THREE.ClampToEdgeWrapping;
           texture.wrapT = THREE.ClampToEdgeWrapping;
@@ -954,39 +1263,37 @@ export class GUIControl {
           this.highlight.corner_material.visible = true;
           if (typeof this.highlightEnabled == 'undefined') this.highlightEnabled = true;
         }
-      );
-    } else {
+        texture.needsUpdate = true;
+        this.highlight.corner_material.visible = true;
+        if(typeof this.highlightEnabled == 'undefined')
+          this.highlightEnabled = true;
+        this._endTextureLoad();
+      });
+    }else{
       this.highlight.corner_material.visible = false;
       this.highlightEnabled = false;
     }
 
-    if (this.highlight.fill.material) {
-      if (this.highlight.fill.texture != '') {
-        this.highlight.fill.material.transparent = true;
+    if(this.highlight.fill.material){
+      if(this.highlight.fill.texture != ''){
         this.highlight.fill.material.visible = false;
-        TextureLoader.enQueue(
-          this.highlight.fill.texture,
-          this.highlight.fill.material,
-          TextureType.TEXTURE,
-          (texture: OdysseyTexture) => {
-            if (this.highlight.fill.material) {
-              if (!texture) {
-                this.highlight.fill.material.visible = false;
-              } else {
-                texture.anisotropy = 1;
-                texture.minFilter = THREE.LinearFilter;
-                texture.magFilter = THREE.LinearFilter;
-                if (this.highlight.fill.mesh && !this.highlight.fill.material.transparent) {
-                  this.highlight.fill.mesh.renderOrder = 0;
-                }
-                texture.needsUpdate = true;
-                this.highlight.fill.material.visible = true;
-                this.highlightFillEnabled = true;
+        this._beginTextureLoad();
+        TextureLoader.enQueue(this.highlight.fill.texture, this.highlight.fill.material, TextureType.TEXTURE, (texture: OdysseyTexture) => {
+          if(this.highlight.fill.material){
+            if(!(texture)){
+              this.highlight.fill.material.visible = false;
+            }else{
+              texture.anisotropy = 1;
+              texture.minFilter = THREE.LinearFilter;
+              texture.magFilter = THREE.LinearFilter;
+              if(this.highlight.fill.mesh && !this.highlight.fill.material.transparent){
+                this.highlight.fill.mesh.renderOrder = 0;
               }
             }
           }
-        );
-      } else {
+          this._endTextureLoad();
+        });
+      }else{
         this.highlight.fill.material.visible = false;
         this.highlightFillEnabled = false;
       }
@@ -998,9 +1305,11 @@ export class GUIControl {
 
     if (this.text.font != '') {
       this.text.material.visible = false;
+      this._beginTextureLoad();
       TextureLoader.enQueue(this.text.font, this.text.material, TextureType.TEXTURE, (texture: OdysseyTexture) => {
         if (!texture) {
           console.log('initTextures', this.text.font, texture);
+          this._endTextureLoad();
           return;
         }
 
@@ -1017,6 +1326,7 @@ export class GUIControl {
         this.guiFont = new GUIFont(texture);
         this.onFontTextureLoaded();
         this.text.material.visible = true;
+        this._endTextureLoad();
       });
     } else {
       this.text.material.visible = false;
@@ -1035,7 +1345,7 @@ export class GUIControl {
   onHoverOut() {
     this.hover = false;
     this.mouseOver = false;
-    if (this.disableSelection || this.disableHover) {
+    if(this.disableSelection || this.disableHover){
       return;
     }
 
@@ -1057,7 +1367,7 @@ export class GUIControl {
 
   onHoverIn() {
     this.mouseOver = true;
-    if (this.disableSelection || this.disableHover) {
+    if(this.disableSelection || this.disableHover){
       this.hover = false;
       return;
     }
@@ -1084,12 +1394,15 @@ export class GUIControl {
     this.processEventListener('hover');
     this.processEventListener('mouseIn');
     this.list?.markListRttDirty?.();
-
+    
     // this.setTooltipVisible(true);
   }
 
   onFontTextureLoaded() {
     this.buildText();
+    if (this.list) {
+      this.invalidateListRtt();
+    }
   }
 
   resizeControl() {
@@ -1285,10 +1598,11 @@ export class GUIControl {
       this.text.material.uniforms.opacity.value = 1 * opacity;
       this.setTextColor(this.text.color.r, this.text.color.g, this.text.color.b);
     }
-
-    if (this.border.fill.material) this.border.fill.material.uniforms.opacity.value = 1 * opacity;
-
-    if (this.disableSelection || this.disableHover) {
+    
+    if(this.border.fill.material)
+      this.border.fill.material.uniforms.opacity.value = 1 * opacity;
+    
+    if(this.disableSelection || this.disableHover){
       this.hideHighlight();
     }
   }
@@ -1718,7 +2032,7 @@ export class GUIControl {
     };
   }
 
-  getInnerSize() {
+  getInnerSize(){
     let width = Math.max(0, this.extent.width - (this.border.dimension || this.highlight.dimension));
     let height = Math.max(0, this.extent.height - (this.border.dimension || this.highlight.dimension));
 
@@ -1789,9 +2103,8 @@ export class GUIControl {
 
   getShrinkWidth() {
     let shrinkWidth = 0;
-    if (BitWise.InstanceOfObject(this, GUIControlTypeMask.GUIListBox)) {
-      shrinkWidth =
-        (this as any).scrollbar.extent.width + (this as any).scrollbar.border.dimension * 2 - (this as any).padding * 2;
+    if(BitWise.InstanceOfObject(this, GUIControlTypeMask.GUIListBox)){
+      shrinkWidth = ((this as any).scrollbar.extent.width) + ((this as any).scrollbar.border.dimension * 2) - ((this as any).padding * 2);
     }
     return shrinkWidth;
   }
@@ -1800,9 +2113,12 @@ export class GUIControl {
     // let extent = this.getControlExtent();
     let inner = this.getInnerSize();
 
-    if (BitWise.InstanceOfObject(this, GUIControlTypeMask.GUIProtoItem)) {
+    let innerW = Math.max(0, this.extent.width - borderSize);
+    let innerH = Math.max(0, this.extent.height - borderSize);
+
+    if(BitWise.InstanceOfObject(this, GUIControlTypeMask.GUIProtoItem)){
       // innerW += this.parent.border.inneroffset * 2;
-      inner.width = Math.min(this.extent.width, inner.width);
+      innerW = Math.min(this.extent.width, innerW);
     }
 
     let top = 0,
@@ -1886,7 +2202,7 @@ export class GUIControl {
     let innerW = Math.max(0, this.extent.width - highlightSize);
     let innerH = Math.max(0, this.extent.height - highlightSize);
 
-    if (BitWise.InstanceOfObject(this, GUIControlTypeMask.GUIProtoItem)) {
+    if(BitWise.InstanceOfObject(this, GUIControlTypeMask.GUIProtoItem)){
       // innerW += this.parent.border.inneroffset * 2;
       innerW = Math.min(this.extent.width, innerW);
     }
@@ -2231,8 +2547,16 @@ export class GUIControl {
     }
   }
 
-  updateTextGeometry(text: string) {
-    if (!(this.text.texture instanceof THREE.Texture)) return;
+  setTextAlignment(alignment: number){
+    this.text.alignment = alignment;
+    if(this.control.hasField('TEXT')){
+      this.control.getFieldByLabel('TEXT')?.getFieldByLabel('ALIGNMENT')?.setValue(alignment);
+    }else{
+      this.control.addField(new GFFField(GFFDataType.INT, 'ALIGNMENT', alignment));
+    }
+  }
+
+  updateTextGeometry(text: string){
 
     if (this.guiFont) {
       this.guiFont.buildGeometry(this.text.geometry, this.text.text, this.text.alignment, this.getOuterSize().width);
@@ -2273,12 +2597,12 @@ export class GUIControl {
 
     // ProtoItem rows (e.g. Messages dialog list) wrap text like Labels; without this, extent.height stays at
     // the single-line template height and list rows overlap after buildGeometry.
-    if (
+    if(
       this.listRowAlignExtentToWrappedText &&
       BitWise.InstanceOfObject(this.parent, GUIControlTypeMask.GUIListBox) &&
       this.list &&
       (this.type == GUIControlType.Label || this.type == GUIControlType.ProtoItem)
-    ) {
+    ){
       this.extent.height = this.textSize.y;
       this.resizeControl();
       this.list.relayoutAfterRowHeightChange();
@@ -2724,4 +3048,10 @@ export class GUIControl {
     output.center.set(minX + width / 2, minY + height / 2, 0);
     output.radius = length / 2;
   }
+
+  setDepthMode(mode: THREE.DepthModes) {
+    this.border.fill.material.depthFunc = mode;
+    this.highlight.fill.material.depthFunc = mode;
+  }
+
 }

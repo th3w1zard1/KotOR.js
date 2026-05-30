@@ -1,9 +1,8 @@
-import { ResourceLoader } from '@/loaders/ResourceLoader';
-import { ResourceTypes } from '@/resource/ResourceTypes';
-import { TwoDAObject } from '@/resource/TwoDAObject';
-import { KEYManager } from '@/managers/KEYManager';
-import { IKEYEntry } from '@/interface/resource/IKEYEntry';
-import { IBIFResource } from '@/interface/resource/IBIFResource';
+import { ResourceLoader } from "@/loaders/ResourceLoader";
+import { ResourceTypes } from "@/resource/ResourceTypes";
+import { TwoDAObject } from "@/resource/TwoDAObject";
+import { KEYManager } from "@/managers/KEYManager";
+import { IBIFResource } from "@/interface/resource/IBIFResource";
 
 /**
  * TwoDAManager class.
@@ -20,10 +19,10 @@ export class TwoDAManager {
   static async Load2DATables() {
     TwoDAManager.datatables = new Map();
     const resources: IBIFResource[] = KEYManager.Key.getFilesByResType(ResourceTypes['2da']);
-
-    let key: IKEYEntry = undefined;
-    for (let i = 0; i < resources.length; i++) {
-      key = KEYManager.Key.getFileKeyByRes(resources[i]);
+    
+    await Promise.all(resources.map(async (res) => {
+      const key = KEYManager.Key.getFileKeyByRes(res);
+      if(!key) return;
       //Load 2da's with the resource loader so it can pick up ones in the override folder
       try {
         const d = await ResourceLoader.loadResource(ResourceTypes['2da'], key.resRef);
@@ -31,6 +30,7 @@ export class TwoDAManager {
       } catch (e) {
         console.error(e);
       }
-    }
+    }));
+
   }
 }

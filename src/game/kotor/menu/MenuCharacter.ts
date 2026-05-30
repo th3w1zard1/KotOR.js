@@ -293,6 +293,8 @@ export class MenuCharacter extends GameMenu {
 
     const portraitAttachRoot = this._3dViewModel?.getRootOdysseyNode?.() || this._3dViewModel;
 
+    const portraitAttachRoot = this._3dViewModel?.getRootOdysseyNode?.() || this._3dViewModel;
+
     if (this.char) {
       this.char.removeFromParent();
     }

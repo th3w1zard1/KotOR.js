@@ -112,7 +112,7 @@ export class ModuleItem extends ModuleObject {
   clone(): ModuleItem {
     const nItem = new ModuleItem(this.template);
     nItem.initProperties();
-    if (nItem.template) {
+    if(nItem.template){
       nItem.template.getFieldByLabel('StackSize')?.setValue(1);
     }
     nItem.stackSize = 1;

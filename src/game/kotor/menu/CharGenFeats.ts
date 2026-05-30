@@ -1,10 +1,9 @@
-import { GameMenu } from '@/gui';
-import type { GUIListBox, GUILabel, GUIButton } from '@/gui';
-import { GUIFeatItem } from '@/game/kotor/gui/GUIFeatItem';
-import type { ModuleCreature } from '@/module';
-import { TextureLoader } from '@/loaders';
-import { TalentFeat } from '@/talents';
-import { GameState } from '@/GameState';
+import { GameMenu } from "@/gui";
+import type { GUIListBox, GUILabel, GUIButton } from "@/gui";
+import { GUIFeatItem } from "@/game/kotor/gui/GUIFeatItem";
+import type { ModuleCreature } from "@/module";
+import { TalentFeat } from "@/talents";
+import { GameState } from "@/GameState";
 
 /**
  * CharGenFeats class.
@@ -50,9 +49,7 @@ export class CharGenFeats extends GameMenu {
     super.show();
     this.addGrantedFeats();
     this.LB_FEATS.setProtoBuilder(GUIFeatItem);
-    this.LB_FEATS.clearItems();
     this.buildFeatList();
-    TextureLoader.LoadQueue();
   }
 
   setCreature(creature: ModuleCreature) {
@@ -120,11 +117,11 @@ export class CharGenFeats extends GameMenu {
             }
           }
         }
-        this.LB_FEATS.addItem(group);
       }
       groups.push(group);
     }
-    groups.sort((groupa, groupb) => (groupa[0].toolsCategories > groupb[0].toolsCategories ? 1 : -1));
+    groups.sort((groupa, groupb) => groupa[0].toolsCategories > groupb[0].toolsCategories ? 1 : -1);
+    this.LB_FEATS.setItems(groups);
     console.log(groups);
   }
 }

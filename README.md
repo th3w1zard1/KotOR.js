@@ -7,6 +7,7 @@
 ![Node JS](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![NPM](https://img.shields.io/badge/npm-CB3837?style=for-the-badge&logo=npm&logoColor=white)
 ![Webpack](https://img.shields.io/badge/Webpack-8DD6F9?style=for-the-badge&logo=Webpack&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 
 ![KotOR.js](https://raw.githubusercontent.com/KobaltBlu/KotOR.js/master/src/assets/icons/icon.png)
 
@@ -25,7 +26,7 @@ In addition to the game engine, the project includes an early attempt at a moddi
 [Discussion Thread](https://deadlystream.com/topic/6608-wip-kotor-js-a-game-engine-for-k1-k2-written-in-javascript/)
 [KotOR.js Youtube Channel](https://www.youtube.com/channel/UC7b4RL2mj0WJ7fEvbJePDbA)
 
-[![OpenKotOR Discord](https://discordapp.com/api/guilds/739590575359262792/widget.png?style=banner2)](https://discord.gg/QxjqVAuN8T)
+[![OpenKotOR Discord](https://discordapp.com/api/guilds/739590575359262792/widget.png?style=banner2)](https://discord.gg/cxuF4xRD66)
 
 ## Supported Games
 
@@ -113,9 +114,17 @@ npm start
 
 #### Testing
 
-- `npm test` - Run all tests with coverage
-- `npm run test:watch` - Run tests in watch mode
-- `npm run test:quick` - Run tests without coverage (faster)
+**Option B2 — Hot reload while playing (preserves game session):**
+```bash
+npm run dev:hmr
+```
+Runs `webpack:dev-kotor-watch` (engine + workers only) and a **webpack-dev-server** with HMR for the game client. Open **http://localhost:8080/game/?key=kotor**, load into the game, then edit TypeScript under `src/` — successful hot updates keep the live Three.js scene and `GameState` intact instead of forcing a full page reload.
+
+> The HMR server inlines the engine module graph for hot-swap; `webpack:dev-kotor-watch` rebuilds `dist/KotOR.js` and workers without overwriting the HMR game bundle.
+
+> `npm run dev` remains the classic watch + static serve flow. Use `dev:hmr` when iterating on gameplay or engine logic in-browser.
+
+---
 
 #### Code Quality
 
@@ -125,7 +134,34 @@ npm start
 
 - `npm run typedoc` - Generate API documentation
 
-### Development Workflow
+### Docker
+
+This project can be containerized as a static web app.
+
+Build the image:
+
+```bash
+docker build -t kotor-js-web .
+```
+
+Run it:
+
+```bash
+docker run --rm -p 8080:80 kotor-js-web
+```
+
+Then open:
+
+- `http://localhost:8080/` (Launcher)
+
+Notes:
+
+- The Docker image uses a multi-stage build (`node:alpine` -> `nginx:alpine`).
+- It runs the same production build as local web output: `npm run webpack:prod`.
+
+---
+
+### Other Commands
 
 For a typical development session:
 

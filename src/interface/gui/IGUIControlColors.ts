@@ -17,8 +17,8 @@ export interface IGUIControlColors {
   BORDER_HIGHLIGHT: THREE.Color;
   BORDER_HIGHLIGHT_HOVER: THREE.Color;
 
-  TEXT: THREE.Color;
-  TEXT_HIGHLIGHT: THREE.Color;
+    TEXT: THREE.Color;
+    TEXT_HIGHLIGHT: THREE.Color;
 
-  LOCKED: THREE.Color;
+    LOCKED: THREE.Color;
 }

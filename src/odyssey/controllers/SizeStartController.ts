@@ -21,23 +21,17 @@ export class SizeStartController extends OdysseyController {
     super(controller);
   }
 
-  setFrame(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, data: IOdysseyControllerFrameGeneric) {
-    if (manager.modelNode.emitter) {
+  setFrame(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, data: IOdysseyControllerFrameGeneric){
+    if(manager.modelNode.emitter){
       manager.modelNode.emitter.sizes[0] = data.value;
       manager.modelNode.emitter.material.uniforms.scale.value.x = data.value;
       manager.modelNode.emitter.material.uniformsNeedUpdate = true;
     }
   }
 
-  animate(
-    manager: OdysseyModelAnimationManager,
-    anim: OdysseyModelAnimation,
-    last: IOdysseyControllerFrameGeneric,
-    next: IOdysseyControllerFrameGeneric,
-    fl: number = 0
-  ) {
-    if (manager.modelNode.emitter) {
-      const v = (next.value - last.value) * fl + last.value;
+  animate(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, last: IOdysseyControllerFrameGeneric, next: IOdysseyControllerFrameGeneric, fl: number = 0){
+    if(manager.modelNode.emitter){
+      const v = ((next.value - last.value) * fl + last.value);
       manager.modelNode.emitter.sizes[0] = v;
       manager.modelNode.emitter.material.uniforms.scale.value.x = v;
       manager.modelNode.emitter.material.uniformsNeedUpdate = true;

@@ -20,20 +20,14 @@ export class GravityController extends OdysseyController {
     super(controller);
   }
 
-  setFrame(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, data: IOdysseyControllerFrameGeneric) {
-    if (manager.modelNode.emitter) {
+  setFrame(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, data: IOdysseyControllerFrameGeneric){
+    if(manager.modelNode.emitter){
       manager.modelNode.emitter.gravity = data.value;
     }
   }
 
-  animate(
-    manager: OdysseyModelAnimationManager,
-    anim: OdysseyModelAnimation,
-    last: IOdysseyControllerFrameGeneric,
-    next: IOdysseyControllerFrameGeneric,
-    fl: number = 0
-  ) {
-    if (manager.modelNode.emitter) {
+  animate(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, last: IOdysseyControllerFrameGeneric, next: IOdysseyControllerFrameGeneric, fl: number = 0){
+    if(manager.modelNode.emitter){
       manager.modelNode.emitter.gravity = OdysseyController.lerp1(last, next, fl);
     }
   }

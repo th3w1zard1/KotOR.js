@@ -85,52 +85,36 @@ export class MenuSound extends K1_MenuSound {
     this.SLI_FX.attachINIProperty('Sound Options.Sound Effects Volume');
     this.SLI_MOVIE.attachINIProperty('Sound Options.Movie Volume');
 
-    this.LBL_MUSIC.addEventListener('hover', () => {
-      //log.info(this.LBL_MUSIC.getHintText());
-      this.LB_DESC.clearItems();
-      this.LB_DESC.addItem(this.LBL_MUSIC.getHintText());
+    this.LBL_MUSIC.addEventListener( 'hover', () => {
+      this.LB_DESC.setItem(this.LBL_MUSIC.getHintText());
     });
 
-    this.SLI_MUSIC.addEventListener('hover', () => {
-      //log.info(this.LBL_MUSIC.getHintText());
-      this.LB_DESC.clearItems();
-      this.LB_DESC.addItem(this.LBL_MUSIC.getHintText());
+    this.SLI_MUSIC.addEventListener( 'hover', () => {
+      this.LB_DESC.setItem(this.LBL_MUSIC.getHintText());
     });
 
-    this.LBL_VO.addEventListener('hover', () => {
-      //log.info(this.LBL_MUSIC.getHintText());
-      this.LB_DESC.clearItems();
-      this.LB_DESC.addItem(this.LBL_VO.getHintText());
+    this.LBL_VO.addEventListener( 'hover', () => {
+      this.LB_DESC.setItem(this.LBL_VO.getHintText());
     });
 
-    this.SLI_VO.addEventListener('hover', () => {
-      //log.info(this.LBL_MUSIC.getHintText());
-      this.LB_DESC.clearItems();
-      this.LB_DESC.addItem(this.LBL_VO.getHintText());
+    this.SLI_VO.addEventListener( 'hover', () => {
+      this.LB_DESC.setItem(this.LBL_VO.getHintText());
     });
 
-    this.LBL_FX.addEventListener('hover', () => {
-      //log.info(this.LBL_MUSIC.getHintText());
-      this.LB_DESC.clearItems();
-      this.LB_DESC.addItem(this.LBL_FX.getHintText());
+    this.LBL_FX.addEventListener( 'hover', () => {
+      this.LB_DESC.setItem(this.LBL_FX.getHintText());
     });
 
-    this.SLI_FX.addEventListener('hover', () => {
-      //log.info(this.LBL_MUSIC.getHintText());
-      this.LB_DESC.clearItems();
-      this.LB_DESC.addItem(this.LBL_FX.getHintText());
+    this.SLI_FX.addEventListener( 'hover', () => {
+      this.LB_DESC.setItem(this.LBL_FX.getHintText());
     });
 
-    this.LBL_MOVIE.addEventListener('hover', () => {
-      //log.info(this.LBL_MUSIC.getHintText());
-      this.LB_DESC.clearItems();
-      this.LB_DESC.addItem(this.LBL_MOVIE.getHintText());
+    this.LBL_MOVIE.addEventListener( 'hover', () => {
+      this.LB_DESC.setItem(this.LBL_MOVIE.getHintText());
     });
 
-    this.SLI_MOVIE.addEventListener('hover', () => {
-      //log.info(this.LBL_MUSIC.getHintText());
-      this.LB_DESC.clearItems();
-      this.LB_DESC.addItem(this.LBL_MOVIE.getHintText());
+    this.SLI_MOVIE.addEventListener( 'hover', () => {
+      this.LB_DESC.setItem(this.LBL_MOVIE.getHintText());
     });
   }
 }

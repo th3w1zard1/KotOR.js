@@ -481,7 +481,10 @@ export class OdysseyWalkMesh {
   dispose() {
     if (this.mesh && this.mesh.parent) this.mesh.removeFromParent();
 
-    if (this.geometry) {
+    if(this.mesh && this.mesh.parent)
+      this.mesh.removeFromParent();
+
+    if(this.geometry){
       this.geometry.dispose();
     }
 
@@ -705,7 +708,7 @@ export class OdysseyWalkMesh {
     return tc?.color?.clone() ?? new THREE.Color(0.5, 0.5, 0.5);
   }
 
-  getAdjacentFaces(faceIndex: number = 0): { a: OdysseyFace3; b: OdysseyFace3; c: OdysseyFace3 } {
+  getAdjacentFaces(faceIndex: number = 0): { a: OdysseyFace3, b: OdysseyFace3, c: OdysseyFace3 } {
     const face = this.faces[1];
     const vertIndexes = [face.a, face.b, face.c];
     const adjacent = this.faces.filter((f) => {

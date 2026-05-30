@@ -9,11 +9,12 @@ import { MDLLoader, ResourceLoader } from '@/loaders';
 import { ResourceTypes } from '@/resource/ResourceTypes';
 import { ModuleObjectType } from '@/enums/module/ModuleObjectType';
 // import { ModuleObjectManager } from "@/managers";
-import { AudioEmitterType } from '@/enums/audio/AudioEmitterType';
-import { AudioEngineChannel } from '@/enums/audio/AudioEngineChannel';
-import { GameState } from '@/GameState';
-import { OdysseyModel3D } from '@/three/odyssey/OdysseyModel3D';
-import { AudioGeneratedType } from '@/enums/audio/AudioGeneratedType';
+import { AudioEmitterType } from "@/enums/audio/AudioEmitterType";
+import { AudioEngineChannel } from "@/enums/audio/AudioEngineChannel";
+import { GameState } from "@/GameState";
+import { OdysseyModel3D } from "@/three/odyssey/OdysseyModel3D";
+import { AudioGeneratedType } from "@/enums/audio/AudioGeneratedType";
+import { AudioPriorityGroup } from "@/enums/audio/AudioPriorityGroup";
 
 /**
  * ModuleSound class.
@@ -179,9 +180,10 @@ export class ModuleSound extends ModuleObject {
     return model;
   }
 
-  async loadSound() {
-    const type = this.positional ? AudioEmitterType.POSITIONAL : AudioEmitterType.GLOBAL;
-    if (this.audioEmitter) {
+  async loadSound(){
+    const priorityGroup = GameState.SWRuleSet.getPriorityGroupById(this.priority);
+    const type = !!this.positional ? AudioEmitterType.POSITIONAL : AudioEmitterType.GLOBAL;
+    if(this.audioEmitter){
       this.audioEmitter.destroy();
     }
     this.audioEmitter = new AudioEmitter(this.audioEngine, AudioEngineChannel.SFX);
@@ -192,12 +194,13 @@ export class ModuleSound extends ModuleObject {
     this.audioEmitter.isRandomPosition = this.randomPosition;
     this.audioEmitter.interval = this.interval;
     this.audioEmitter.intervalVariation = this.intervalVariation;
-    this.audioEmitter.minDistance = this.minDistance || 1;
-    this.audioEmitter.maxDistance = this.maxDistance;
+    this.audioEmitter.minDistance = this.minDistance > 0 ? this.minDistance : Math.max(1, priorityGroup?.minvolumedist || 1);
+    this.audioEmitter.maxDistance = this.maxDistance > 0 ? this.maxDistance : Math.max(this.audioEmitter.minDistance, priorityGroup?.maxvolumedist || 1);
     this.audioEmitter.playbackRate = 1;
-    this.audioEmitter.playbackRateVariation = this.pitchVariation || 0;
+    this.audioEmitter.playbackRateVariation = this.pitchVariation > 0 ? this.pitchVariation : priorityGroup?.playbackvariance || 0;
     this.audioEmitter.volume = Math.max(0, Math.min(127, this.volume));
     this.audioEmitter.volumeVariation = this.volumeVariation || 0;
+    this.audioEmitter.setPriorityGroupId(Number.isFinite(this.priority) ? this.priority : AudioPriorityGroup.DEFAULT);
     this.audioEmitter.type = type;
     this.audioEmitter.sounds = this.soundResRefs.slice(0);
     this.audioEmitter.position.x = this.position.x;

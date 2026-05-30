@@ -149,20 +149,8 @@ export class GamePad {
       }
     }
 
-    global.addEventListener(
-      'gamepadconnected',
-      (e: Event) => {
-        gamepadHandler(e as GamepadEvent, true);
-      },
-      false
-    );
-    global.addEventListener(
-      'gamepaddisconnected',
-      (e: Event) => {
-        gamepadHandler(e as GamepadEvent, false);
-      },
-      false
-    );
+    globalThis.addEventListener("gamepadconnected", function(e) { gamepadHandler(e, true); }, false);
+    globalThis.addEventListener("gamepaddisconnected", function(e) { gamepadHandler(e, false); }, false);
   }
 
   static CurrentGamePad: Gamepad | undefined;

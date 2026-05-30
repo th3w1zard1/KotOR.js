@@ -17,6 +17,15 @@ const points = [
   new THREE.Vector3(-0.5, -0.5, 0), // close loop
 ];
 
+// build a normalized unit rect, scale to extent
+const points = [
+  new THREE.Vector3(-0.5, -0.5, 0),
+  new THREE.Vector3( 0.5, -0.5, 0),
+  new THREE.Vector3( 0.5,  0.5, 0),
+  new THREE.Vector3(-0.5,  0.5, 0),
+  new THREE.Vector3(-0.5, -0.5, 0), // close loop
+];
+
 /**
  * GUIProtoItem class.
  *
@@ -31,15 +40,21 @@ export class GUIProtoItem extends GUIControl {
   static debugGeom = new THREE.BufferGeometry().setFromPoints(points);
   static debugMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, depthTest: false });
 
-  constructor(menu: GameMenu, control: GFFStruct, parent: GUIControl, scale: boolean = false) {
+  static debugExtentLine: THREE.Line;
+  static debugGeom = new THREE.BufferGeometry().setFromPoints(points);
+  static debugMaterial  = new THREE.LineBasicMaterial({ color: 0x00ffff, depthTest: false });
+
+  constructor(menu: GameMenu, control: GFFStruct, parent: GUIControl, scale: boolean = false){
     super(menu, control, parent, scale);
     this.objectType |= GUIControlTypeMask.GUIProtoItem;
     this.zOffset = 2;
     this.isProtoItem = false;
 
-    if (this.parent && this.parent.objectType & GUIControlTypeMask.GUIListBox) {
+    if(this.parent && this.parent.objectType & GUIControlTypeMask.GUIListBox){
       const list = this.parent as GUIListBox;
-      this.extent.width = list.extent.width - (list.scrollbar ? list.scrollbar.extent.width : 0) - list.padding * 2;
+      this.extent.width = list.extent.width
+        - (list.scrollbar ? list.scrollbar.extent.width : 0)
+        - list.padding * 2;
     }
 
     this.onSelect = () => {
@@ -55,19 +70,19 @@ export class GUIProtoItem extends GUIControl {
     });
   }
 
-  createControl() {
+  createControl(){
     const widget = super.createControl();
 
     GUIProtoItem.debugExtentLine = new THREE.Line(GUIProtoItem.debugGeom, GUIProtoItem.debugMaterial);
     GUIProtoItem.debugExtentLine.scale.set(this.extent.width, this.extent.height, 1);
     GUIProtoItem.debugExtentLine.position.z = 50; // above all UI layers
-    GUIProtoItem.debugExtentLine.visible = true; //GameState.debug[EngineDebugType.GUI_PROTO_EXTENTS];
+    GUIProtoItem.debugExtentLine.visible = true;//GameState.debug[EngineDebugType.GUI_PROTO_EXTENTS];
     // this.widget.add(GUIProtoItem.debugExtentLine);
     return widget;
   }
 
-  onSelectStateChanged() {
-    if (this.selected || this.hover) {
+  onSelectStateChanged(){
+    if(this.selected || this.hover){
       this.showHighlight();
       this.hideBorder();
       this.pulsing = true;
@@ -117,9 +132,9 @@ export class GUIProtoItem extends GUIControl {
     this.calculateBox();*/
   }
 
-  getItemHeight() {
-    let height = this.extent.height;
-    if (this.objectType & GUIControlTypeMask.GUIButton) {
+  getItemHeight(){
+    let height = (this.extent.height);
+    if((this.objectType & GUIControlTypeMask.GUIButton)){
       return height;
     }
 
@@ -127,7 +142,7 @@ export class GUIProtoItem extends GUIControl {
       this.text.geometry.computeBoundingBox();
       const tSize = new THREE.Vector3();
       this.text.geometry.boundingBox.getSize(tSize);
-      if (tSize.y > height) {
+      if(tSize.y > height){
         height = tSize.y;
       }
     }

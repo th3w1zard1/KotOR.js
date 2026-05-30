@@ -27,9 +27,9 @@ export class ShaderGrass extends Shader {
         alphaTest: { value: 1 },
         // Fade distance uniforms
         fadeStartDistance: { value: 50.0 }, // Distance where fade starts
-        fadeEndDistance: { value: 100.0 }, // Distance where grass becomes invisible
-        useDistanceFade: { value: true }, // Toggle for distance fade
-      },
+        fadeEndDistance: { value: 100.0 },  // Distance where grass becomes invisible
+        useDistanceFade: { value: true }    // Toggle for distance fade
+      }
     ]) as any;
     this.vertex = `
     #include <common>

@@ -36,16 +36,16 @@ export interface YUVFrame {
  * @license {@link https://www.gnu.org/licenses/gpl-3.0.txt|GPLv3}
  */
 export class BinkVideoDecoder {
-  private width: number;
-  private height: number;
-  private version: string;
-  private swapPlanes: boolean;
-  private hasAlpha: boolean;
-  private last?: YUVFrame;
-  private frameNum = 0;
-  private framePool?: [YUVFrame, YUVFrame];
-  private framePoolIndex = 0;
-  private alphaPlane?: Uint8Array;
+    private width: number;
+    private height: number;
+    private version: string;
+    private swapPlanes: boolean;
+    private hasAlpha: boolean;
+    private last?: YUVFrame;
+    private frameNum = 0;
+    private framePool?: [YUVFrame, YUVFrame];
+    private framePoolIndex = 0;
+    private alphaPlane?: Uint8Array;
 
   // Reusable buffers to avoid allocations
   private static readonly intraDct = new Int32Array(64);
@@ -63,29 +63,61 @@ export class BinkVideoDecoder {
     this.hasAlpha = hasAlpha;
   }
 
-  decodePacketToFrame(pkt: Uint8Array): YUVFrame {
-    try {
-      const w = this.width,
-        h = this.height;
-      const yStride = w,
-        cStride = (w + 1) >> 1;
-      // Allocate block-aligned buffers: luma bh*8 rows, chroma bh_chroma*8 rows.
-      // This matches FFmpeg's padded allocation and prevents out-of-bounds writes
-      // when the block grid extends beyond the visible area.
-      const yBh = ((h + 7) >> 3) << 3; // ceil to 8px rows for luma
-      const cBh = ((h + 15) >> 4) << 3; // ceil to 16px then *8 for chroma block rows
-      const frame = this.getFrameBuffer(w, h, yStride, cStride, yBh, cBh);
+    decodePacketToFrame(pkt: Uint8Array): YUVFrame {
+        try {
+            const w = this.width, h = this.height;
+            const yStride = w, cStride = (w + 1) >> 1;
+            // Allocate block-aligned buffers: luma bh*8 rows, chroma bh_chroma*8 rows.
+            // This matches FFmpeg's padded allocation and prevents out-of-bounds writes
+            // when the block grid extends beyond the visible area.
+            const yBh = ((h + 7) >> 3) << 3;           // ceil to 8px rows for luma
+            const cBh = ((h + 15) >> 4) << 3;           // ceil to 16px then *8 for chroma block rows
+            const frame = this.getFrameBuffer(w, h, yStride, cStride, yBh, cBh);
 
       const br = new BitReaderLE(pkt);
       const bitsCount = pkt.length << 3;
 
-      // If stream has alpha, consume its plane first (Bink >= 'i') to keep bitstream aligned
-      if (this.hasAlpha) {
-        if (this.version >= 'i') br.skipBits(32);
-        if (!this.alphaPlane || this.alphaPlane.length !== yStride * yBh) {
-          this.alphaPlane = new Uint8Array(yStride * yBh);
-        } else {
-          this.alphaPlane.fill(0);
+            // If stream has alpha, consume its plane first (Bink >= 'i') to keep bitstream aligned
+            if (this.hasAlpha) {
+                if (this.version >= 'i') br.skipBits(32);
+                if (!this.alphaPlane || this.alphaPlane.length !== (yStride * yBh)) {
+                    this.alphaPlane = new Uint8Array(yStride * yBh);
+                } else {
+                    this.alphaPlane.fill(0);
+                }
+                const aFrame: YUVFrame = {
+                    width: w, height: h,
+                    y: this.alphaPlane,
+                    u: new Uint8Array(0), v: new Uint8Array(0),
+                    linesizeY: yStride, linesizeU: 0, linesizeV: 0,
+                };
+                this.decodePlane(br, aFrame, 0, false);
+            }
+
+            // For revisions >= 'i', a 32-bit YUV-data-size field precedes the planes
+            if (this.version >= 'i') br.skipBits(32);
+
+            let planesDecoded = 0;
+            for (let plane = 0; plane < 3; plane++) {
+                const plane_idx = (!plane || !this.swapPlanes) ? plane : (plane ^ 3);
+                const isChroma = plane !== 0;
+                this.decodePlane(br, frame, plane_idx, isChroma);
+                planesDecoded = plane + 1;
+                // Match FFmpeg: bail out if all bits consumed (remaining planes stay zeroed)
+                if (br.getBitPos() >= bitsCount) break;
+            }
+            if (planesDecoded < 3) {
+                this.clearRemainingPlanes(frame, planesDecoded);
+            }
+
+            this.last = frame;
+            this.framePoolIndex ^= 1;
+            this.frameNum++;
+            return frame;
+        } catch (e) {
+            const message = e instanceof Error ? e.message : String(e);
+            const isTruncated = message.includes('readBits beyond end') || message.includes('not enough bits');
+            throw new BinkDecodeError(`BinkVideoDecoder: Failed to decode packet (${pkt.length} bytes): ${message}`, isTruncated);
         }
         const aFrame: YUVFrame = {
           width: w,
@@ -156,16 +188,74 @@ export class BinkVideoDecoder {
       ];
     }
 
-    const frame = this.framePool[this.framePoolIndex];
-    frame.width = w;
-    frame.height = h;
-    this.clearPlanePadding(frame.y, frame.linesizeY, w, h);
-    const chromaW = (w + 1) >> 1;
-    const chromaH = (h + 1) >> 1;
-    this.clearPlanePadding(frame.u, frame.linesizeU, chromaW, chromaH);
-    this.clearPlanePadding(frame.v, frame.linesizeV, chromaW, chromaH);
-    return frame;
-  }
+    private getFrameBuffer(w: number, h: number, yStride: number, cStride: number, yBh: number, cBh: number): YUVFrame {
+        if (!this.framePool) {
+            this.framePool = [
+                {
+                    width: w,
+                    height: h,
+                    y: new Uint8Array(yStride * yBh),
+                    u: new Uint8Array(cStride * cBh),
+                    v: new Uint8Array(cStride * cBh),
+                    linesizeY: yStride,
+                    linesizeU: cStride,
+                    linesizeV: cStride,
+                },
+                {
+                    width: w,
+                    height: h,
+                    y: new Uint8Array(yStride * yBh),
+                    u: new Uint8Array(cStride * cBh),
+                    v: new Uint8Array(cStride * cBh),
+                    linesizeY: yStride,
+                    linesizeU: cStride,
+                    linesizeV: cStride,
+                },
+            ];
+        }
+
+        const frame = this.framePool[this.framePoolIndex];
+        frame.width = w;
+        frame.height = h;
+        this.clearPlanePadding(frame.y, frame.linesizeY, w, h);
+        const chromaW = (w + 1) >> 1;
+        const chromaH = (h + 1) >> 1;
+        this.clearPlanePadding(frame.u, frame.linesizeU, chromaW, chromaH);
+        this.clearPlanePadding(frame.v, frame.linesizeV, chromaW, chromaH);
+        return frame;
+    }
+
+    private clearRemainingPlanes(frame: YUVFrame, planesDecoded: number): void {
+        for (let plane = planesDecoded; plane < 3; plane++) {
+            const plane_idx = (!plane || !this.swapPlanes) ? plane : (plane ^ 3);
+            const isChroma = plane !== 0;
+            const w = isChroma ? ((this.width + 1) >> 1) : this.width;
+            const h = isChroma ? ((this.height + 1) >> 1) : this.height;
+            const stride = plane_idx === 0 ? frame.linesizeY : (plane_idx === 1 ? frame.linesizeU : frame.linesizeV);
+            const base = plane_idx === 0 ? frame.y : (plane_idx === 1 ? frame.u : frame.v);
+            for (let row = 0; row < h; row++) {
+                base.fill(0, row * stride, row * stride + w);
+            }
+            this.clearPlanePadding(base, stride, w, h);
+        }
+    }
+
+    private clearPlanePadding(base: Uint8Array, stride: number, visibleW: number, visibleH: number): void {
+        if (stride > visibleW) {
+            for (let row = 0; row < visibleH; row++) {
+                const rowOff = row * stride;
+                base.fill(0, rowOff + visibleW, rowOff + stride);
+            }
+        }
+        const tailStart = visibleH * stride;
+        if (tailStart < base.length) base.fill(0, tailStart);
+    }
+
+    private decodePlane(br: BitReaderLE, frame: YUVFrame, plane_idx: number, isChroma: boolean) {
+        const w = isChroma ? (this.width >> 1) : this.width;
+        const h = isChroma ? ((this.height + 1) >> 1) : this.height;
+        const stride = plane_idx === 0 ? frame.linesizeY : (plane_idx === 1 ? frame.linesizeU : frame.linesizeV);
+        const base = plane_idx === 0 ? frame.y : (plane_idx === 1 ? frame.u : frame.v);
 
   private clearRemainingPlanes(frame: YUVFrame, planesDecoded: number): void {
     for (let plane = planesDecoded; plane < 3; plane++) {
@@ -232,12 +322,46 @@ export class BinkVideoDecoder {
           prevOff += 8;
           continue;
         }
-        // Optimized switch with inlined simple cases
-        switch (blk) {
-          case BlockType.SKIP_BLOCK: {
-            const ref = c.getRefPtr(dstOff, stride);
-            if (!ref) {
-              for (let i = 0; i < 8; i++) base.fill(0, dstOff + i * stride, dstOff + i * stride + 8);
+
+        // Align to 32-bit boundary at plane end
+        if (br.getBitPos() & 31) br.skipBits(32 - (br.getBitPos() & 31));
+    }
+
+    /** Copy 8x8 block from src to dest without allocating subarray views. */
+    private copyBlock8(dest: Uint8Array, dstOff: number, stride: number, src: Uint8Array, srcOff: number, srcStride: number): void {
+        for (let i = 0; i < 8; i++) {
+            const s = srcOff + i * srcStride;
+            const d = dstOff + i * stride;
+            dest[d] = src[s];
+            dest[d + 1] = src[s + 1];
+            dest[d + 2] = src[s + 2];
+            dest[d + 3] = src[s + 3];
+            dest[d + 4] = src[s + 4];
+            dest[d + 5] = src[s + 5];
+            dest[d + 6] = src[s + 6];
+            dest[d + 7] = src[s + 7];
+        }
+    }
+
+    private getPrevPlane(plane_idx: number): { data: Uint8Array, stride: number } | undefined {
+        if (!this.last) return undefined;
+        if (plane_idx === 0) return { data: this.last.y, stride: this.last.linesizeY };
+        if (plane_idx === 1) return { data: this.last.u, stride: this.last.linesizeU };
+        return { data: this.last.v, stride: this.last.linesizeV };
+    }
+
+    private decodeRunBlock(c: PlaneContext, dst: Uint8Array, dstOff: number, stride: number) {
+        const scan = bink_patterns[c.br.readBits(4) & 0xF];
+        const coord = BinkVideoDecoder.runCoordMap;
+        for (let ci = 0; ci < 64; ci++) coord[ci] = (ci & 7) + (ci >> 3) * stride;
+        let i = 0, scanIdx = 0;
+        do {
+            const run = c.getRun() + 1;
+            i += run;
+            if (i > 64) break; // invalid data
+            if (c.br.readBit()) {
+                const v = c.getColor();
+                for (let j = 0; j < run; j++) dst[dstOff + coord[scan[scanIdx++]]] = v;
             } else {
               this.copyBlock8(base, dstOff, stride, ref.buf, ref.off, ref.stride);
             }
@@ -518,15 +642,15 @@ class Bundle {
 }
 
 class PlaneContext {
-  private static bundlePool = new Map<string, Uint8Array[]>();
-  br: BitReaderLE;
-  private version: string;
-  private width: number;
-  private bw: number;
-  private base: Uint8Array;
-  private stride: number;
-  private ref?: { data: Uint8Array; stride: number };
-  private readonly _motion = { xoff: 0, yoff: 0 };
+    private static bundlePool = new Map<string, Uint8Array[]>();
+    br: BitReaderLE;
+    private version: string;
+    private width: number;
+    private bw: number;
+    private base: Uint8Array;
+    private stride: number;
+    private ref?: { data: Uint8Array, stride: number };
+    private readonly _motion = { xoff: 0, yoff: 0 };
 
   bundle: Bundle[] = Array.from({ length: 9 }, () => new Bundle());
   col_high: Tree[] = Array.from({ length: 16 }, () => ({ vlc_num: 0, syms: Array.from({ length: 16 }, (_, i) => i) }));
@@ -783,13 +907,38 @@ class PlaneContext {
           b.data[b.cur_dec + 1] = (iv >> 8) & 0xff;
           b.cur_dec += 2;
         }
-      } else {
-        for (let j = 0; j < len2; j++) {
-          // Inline writeInt16
-          const iv = (v << 16) >> 16;
-          b.data[b.cur_dec] = iv & 0xff;
-          b.data[b.cur_dec + 1] = (iv >> 8) & 0xff;
-          b.cur_dec += 2;
+    }
+
+    private initLengths() {
+        const width = align8(this.width);
+        this.bundle[BundleId.BLOCK_TYPES].len = av_log2_ts((width >> 3) + 511) + 1;
+        this.bundle[BundleId.SUB_BLOCK_TYPES].len = av_log2_ts((width >> 4) + 511) + 1;
+        this.bundle[BundleId.COLORS].len = av_log2_ts(this.bw * 64 + 511) + 1;
+        const mvLen = av_log2_ts((width >> 3) + 511) + 1;
+        this.bundle[BundleId.INTRA_DC].len = mvLen;
+        this.bundle[BundleId.INTER_DC].len = mvLen;
+        this.bundle[BundleId.X_OFF].len = mvLen;
+        this.bundle[BundleId.Y_OFF].len = mvLen;
+        this.bundle[BundleId.PATTERN].len = av_log2_ts((this.bw << 3) + 511) + 1;
+        this.bundle[BundleId.RUN].len = av_log2_ts(this.bw * 48 + 511) + 1;
+    }
+
+    private initBundleBuffers() {
+        const height = (this.base.length / this.stride) | 0;
+        const bh = (height + 7) >> 3;
+        const blocks = this.bw * bh;
+        const key = `${this.bw}x${bh}`;
+        let pooled = PlaneContext.bundlePool.get(key);
+        if (!pooled) {
+            pooled = Array.from({ length: this.bundle.length }, () => new Uint8Array(blocks * 64));
+            PlaneContext.bundlePool.set(key, pooled);
+        }
+        for (let i = 0; i < this.bundle.length; i++) {
+            const b = this.bundle[i];
+            b.data = pooled[i];
+            b.cur_dec = 0;
+            b.cur_ptr = 0;
+            b.disabled = false;
         }
       }
     }

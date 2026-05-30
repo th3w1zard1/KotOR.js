@@ -1,14 +1,14 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { BaseTabProps } from '@/apps/forge/interfaces/BaseTabProps';
-import { TabUTSEditorState } from '@/apps/forge/states/tabs';
-import * as KotOR from '@/apps/forge/KotOR';
-import '@/apps/forge/styles/tabs/tab-uts-editor.scss';
-import { Button, Modal } from 'react-bootstrap';
-import { FileBrowserNode } from '@/apps/forge/FileBrowserNode';
-import { ForgeState } from '@/apps/forge/states/ForgeState';
-import { CExoLocStringEditor } from '@/apps/forge/components/CExoLocStringEditor/CExoLocStringEditor';
-import { FormField } from '@/apps/forge/components/form-field/FormField';
-import { ForgeSound } from '@/apps/forge/module-editor/ForgeSound';
+import React, { useRef, useState, useEffect, useCallback } from "react"
+import { BaseTabProps } from "@/apps/forge/interfaces/BaseTabProps"
+import { TabUTSEditorState } from "@/apps/forge/states/tabs";
+import * as KotOR from "@/apps/forge/KotOR";
+import "@/apps/forge/components/tabs/tab-uts-editor/tab-uts-editor.scss";
+import { Button, Modal } from "react-bootstrap";
+import { FileBrowserNode } from "@/apps/forge/FileBrowserNode";
+import { ForgeState } from "@/apps/forge/states/ForgeState";
+import { CExoLocStringEditor } from "@/apps/forge/components/CExoLocStringEditor/CExoLocStringEditor";
+import { FormField } from "@/apps/forge/components/form-field/FormField";
+import { ForgeSound } from "@/apps/forge/module-editor/ForgeSound";
 
 const SoundSelector = function (props: { onSelect: (resRef: string) => void; onClose: () => void }) {
   const [soundResRef, setSoundResRef] = useState<string>('');

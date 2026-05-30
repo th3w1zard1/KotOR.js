@@ -26,14 +26,8 @@ export class LifeExpController extends OdysseyController {
     }
   }
 
-  animate(
-    manager: OdysseyModelAnimationManager,
-    anim: OdysseyModelAnimation,
-    last: IOdysseyControllerFrameGeneric,
-    next: IOdysseyControllerFrameGeneric,
-    fl: number = 0
-  ) {
-    if (manager.modelNode.emitter) {
+  animate(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, last: IOdysseyControllerFrameGeneric, next: IOdysseyControllerFrameGeneric, fl: number = 0){
+    if(manager.modelNode.emitter){
       manager.modelNode.emitter.lifeExp = Math.ceil(OdysseyController.lerp1(last, next, fl));
     }
   }

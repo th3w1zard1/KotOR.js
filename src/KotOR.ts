@@ -1,13 +1,12 @@
 ﻿export const VERSION = process.env.VERSION;
 // @ts-ignore
-export * as dxtJs from 'dxt-js';
-export * from '@/utility/polyfills';
-export * from '@/audio';
-export * from '@/module';
-export * from '@/gui';
-export * from '@/GameInitializer';
-export * from '@/GameState';
-export * from '@/managers';
+export * as dxtJs from "dxt-js";
+export * from "@/utility/polyfills";
+export * from "@/audio";
+export * from "@/module";
+export * from "@/gui";
+export * from "@/GameState";
+export * from "@/managers";
 
 export * from '@/utility/binary/BinaryReader';
 export * from '@/utility/binary/BinaryWriter';
@@ -61,10 +60,22 @@ export * from '@/resource/ResourceTypeInfo';
 
 export * from '@/three/odyssey';
 
-export * from '@/utility/ApplicationProfile';
-export * from '@/utility/GameFileSystem';
-export * from '@/utility/Utility';
-export * from '@/engine/TextSprite3D';
+export * from "@/utility/ApplicationProfile";
+export * from "@/utility/GameFileSystem";
+export * from "@/utility/PerformanceMonitor";
+export * from "@/utility/Utility";
+export * from "@/engine/TextSprite3D";
+
+export * from "@/engine/INIConfig";
+export * from "@/engine/CurrentGame";
+export * from "@/engine/rules";
+export * from "@/engine/pathfinding";
+
+export * from "@/talents";
+export * from "@/engine/menu/ActionMenuManager";
+export * from "@/actions/ActionFactory";
+export * from "@/effects/GameEffectFactory";
+export * from "@/events/GameEventFactory";
 
 export * from '@/engine/INIConfig';
 export * from '@/engine/CurrentGame';

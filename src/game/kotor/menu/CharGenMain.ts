@@ -128,7 +128,8 @@ export class CharGenMain extends GameMenu {
     this.NEW_LBL?.hide();
     try {
       GameState.CharGenManager.selectedCreature.model.removeFromParent();
-    } catch (e: any) {}
+    } catch (e: any) {
+    }
     this._3dView.scene.add(GameState.CharGenManager.selectedCreature.model);
     GameState.CharGenManager.selectedCreature.model.rotation.z = -Math.PI / 2;
     const portraitResRef = GameState.CharGenManager.selectedCreature.getPortraitResRef();

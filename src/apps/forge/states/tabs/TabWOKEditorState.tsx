@@ -87,6 +87,9 @@ export class TabWOKEditorState extends TabState {
   private _isDragging: boolean = false;
   private _paintStrokeActive: boolean = false;
 
+  private _isDragging: boolean = false;
+  private _paintStrokeActive: boolean = false;
+
   constructor(options: BaseTabStateOptions = {}) {
     super(options);
 
@@ -134,6 +137,16 @@ export class TabWOKEditorState extends TabState {
       'onCanvasAttached',
       this.syncPaintCursor.bind(this)
     );
+
+    if (this.ui3DRenderer.transformControls) {
+      this.ui3DRenderer.transformControls.addEventListener('dragging-changed', this.onDraggingChanged.bind(this));
+    } else {
+      this.ui3DRenderer.addEventListener<UI3DRendererEventListenerTypes>('onCanvasAttached', () => {
+        if (this.ui3DRenderer.transformControls) {
+          this.ui3DRenderer.transformControls.addEventListener('dragging-changed', this.onDraggingChanged.bind(this));
+        }
+      });
+    }
 
     if (this.ui3DRenderer.transformControls) {
       this.ui3DRenderer.transformControls.addEventListener('dragging-changed', this.onDraggingChanged.bind(this));
@@ -276,6 +289,100 @@ export class TabWOKEditorState extends TabState {
     });
   }
 
+  private onDraggingChanged(event: any): void {
+    const dragging = event.value === true;
+    if (dragging && !this._isDragging) {
+      this._isDragging = true;
+      this.captureUndoSnapshot();
+    } else if (!dragging && this._isDragging) {
+      this._isDragging = false;
+    }
+  }
+
+  /**
+   * `OdysseyWalkMesh.toExportBuffer()` calls `rebuild()`, which allocates a new
+   * `BufferGeometry` and disposes the previous one. The editor wireframe still
+   * referenced the old geometry, so it stopped updating when vertices moved.
+   */
+  private syncWireframeGeometry(): void {
+    if (this.wireframe && this.wok) {
+      this.wireframe.geometry = this.wok.geometry;
+    }
+  }
+
+  protected override captureUndoState(): Uint8Array | undefined {
+    if (!this.wok) return undefined;
+    const buffer = this.wok.toExportBuffer();
+    this.syncWireframeGeometry();
+    return buffer;
+  }
+
+  protected override applyUndoState(buffer: Uint8Array): void {
+    if (!buffer || !this.wok) return;
+    this.rebuildFromBuffer(buffer);
+    if (this.file) {
+      this.file.unsaved_changes = true;
+      this.editorFileUpdated();
+    }
+  }
+
+  private rebuildFromBuffer(buffer: Uint8Array): void {
+    this.ui3DRenderer.selectable.remove(this.wok.mesh);
+    this.ui3DRenderer.transformControls.detach();
+
+    this.wok = new KotOR.OdysseyWalkMesh(new KotOR.BinaryReader(buffer));
+    this.wok.material.visible = true;
+    this.wok.material.side = THREE.DoubleSide;
+    this.wok.material.opacity = 0.75;
+    this.wok.material.transparent = true;
+
+    this.ui3DRenderer.selectable.add(this.wok.mesh);
+    this.wireframe.geometry = this.wok.geometry;
+
+    this.walkmeshRootOffset.set(0, 0, 0);
+    if (this.wok.header.walkMeshType == KotOR.OdysseyWalkMeshType.AABB) {
+      this.wok.box.getCenter(this.walkmeshRootOffset);
+      this.walkmeshRootOffset.z = this.wok.getMinZ();
+      this.wok.mesh.position.sub(this.walkmeshRootOffset);
+      this.wireframe.position.copy(this.wok.mesh.position);
+    } else {
+      this.wok.mesh.position.set(0, 0, 0);
+      this.wireframe.position.set(0, 0, 0);
+    }
+
+    this.rebuildNormalHelpers();
+    this.buildVertexHelpers();
+    this.buildEdgeHelpers();
+    this.selectFace(undefined);
+    this.selectVertex(-1);
+    this.selectEdge(-1);
+    this.setControlMode(this.controlMode);
+  }
+
+  private rebuildNormalHelpers(): void {
+    const arrowPosition = new THREE.Vector3();
+    while (this.edgeNormalHelpersGroup.children.length) {
+      this.edgeNormalHelpersGroup.remove(this.edgeNormalHelpersGroup.children[0]);
+    }
+    this.wok.edges.forEach((edge) => {
+      arrowPosition.copy(edge.center_point).sub(this.walkmeshRootOffset);
+      const arrowHelper = new THREE.ArrowHelper(edge.normal, arrowPosition, 0.5, getComplementaryColor(edge.face.color.getHex()));
+      arrowHelper.layers.set(2);
+      this.edgeNormalHelpersGroup.add(arrowHelper);
+    });
+
+    const faceArrowPosition = new THREE.Vector3();
+    while (this.faceNormalHelpersGroup.children.length) {
+      this.faceNormalHelpersGroup.remove(this.faceNormalHelpersGroup.children[0]);
+    }
+    this.wok.faces.forEach((face) => {
+      faceArrowPosition.copy(face.centroid).sub(this.walkmeshRootOffset);
+      const arrowHelper = new THREE.ArrowHelper(face.normal, faceArrowPosition, 0.5, getComplementaryColor(face.color.getHex()));
+      arrowHelper.layers.set(2);
+      this.faceNormalHelpersGroup.add(arrowHelper);
+    });
+  }
+
   /** Recompute face normals/centroids from vertex positions (matches OdysseyWalkMesh.rebuild face pass). */
   private recomputeAllFaceNormalsAndCentroids(): void {
     if (!this.wok) return;
@@ -289,11 +396,7 @@ export class TabWOKEditorState extends TabState {
       this._wokCrossTmp2.copy(v1).sub(v2);
       this._wokCrossTmp1.cross(this._wokCrossTmp2);
       face.normal.copy(this._wokCrossTmp1).normalize();
-      face.centroid
-        .copy(v1)
-        .add(v2)
-        .add(v3)
-        .multiplyScalar(1 / 3);
+      face.centroid.copy(v1).add(v2).add(v3).multiplyScalar(1 / 3);
     }
   }
 
@@ -327,9 +430,9 @@ export class TabWOKEditorState extends TabState {
     this.syncNormalArrowHelperTransforms();
   }
 
-  public openFile(file?: EditorFile) {
-    return new Promise<KotOR.OdysseyWalkMesh>((resolve, reject) => {
-      if (!file && this.file instanceof EditorFile) {
+  public openFile(file?: EditorFile){
+    return new Promise<KotOR.OdysseyWalkMesh>( (resolve, reject) => {
+      if(!file && this.file instanceof EditorFile){
         file = this.file;
       }
 
@@ -362,7 +465,7 @@ export class TabWOKEditorState extends TabState {
           /**
            * Center the mesh and wireframe if the walkmesh type is AABB
            */
-          if (this.wok.header.walkMeshType == KotOR.OdysseyWalkMeshType.AABB) {
+          if(this.wok.header.walkMeshType == KotOR.OdysseyWalkMeshType.AABB){
             this.wok.box.getCenter(this.walkmeshRootOffset);
             this.walkmeshRootOffset.z = this.wok.getMinZ();
             this.wok.mesh.position.sub(this.walkmeshRootOffset);
@@ -653,27 +756,27 @@ export class TabWOKEditorState extends TabState {
           const selectedVertexHelper = this.vertexHelpers[this.selectedVertexIndex];
           const expectedLocal = this._vertexSyncScratch.copy(selectedVertex).sub(this.walkmeshRootOffset);
           const vertexNeedsUpdate = selectedVertexHelper.position.distanceToSquared(expectedLocal) > 1e-10;
-          if (vertexNeedsUpdate) {
+          if(vertexNeedsUpdate){
             const position = this.wok.geometry.attributes.position as THREE.BufferAttribute;
             selectedVertex.copy(selectedVertexHelper.position).add(this.walkmeshRootOffset);
-            for (let i = 0; i < this.wok.faces.length; i++) {
+            for(let i = 0; i < this.wok.faces.length; i++){
               const face = this.wok.faces[i];
-              if (face.a == this.selectedVertexIndex) {
-                position.setX(i * 3 + 0, selectedVertex.x);
-                position.setY(i * 3 + 0, selectedVertex.y);
-                position.setZ(i * 3 + 0, selectedVertex.z);
+              if(face.a == this.selectedVertexIndex){
+                position.setX( (i * 3) + 0, selectedVertex.x);
+                position.setY( (i * 3) + 0, selectedVertex.y);
+                position.setZ( (i * 3) + 0, selectedVertex.z);
               }
 
-              if (face.b == this.selectedVertexIndex) {
-                position.setX(i * 3 + 1, selectedVertex.x);
-                position.setY(i * 3 + 1, selectedVertex.y);
-                position.setZ(i * 3 + 1, selectedVertex.z);
+              if(face.b == this.selectedVertexIndex){
+                position.setX( (i * 3) + 1, selectedVertex.x);
+                position.setY( (i * 3) + 1, selectedVertex.y);
+                position.setZ( (i * 3) + 1, selectedVertex.z);
               }
 
-              if (face.c == this.selectedVertexIndex) {
-                position.setX(i * 3 + 2, selectedVertex.x);
-                position.setY(i * 3 + 2, selectedVertex.y);
-                position.setZ(i * 3 + 2, selectedVertex.z);
+              if(face.c == this.selectedVertexIndex){
+                position.setX( (i * 3) + 2, selectedVertex.x);
+                position.setY( (i * 3) + 2, selectedVertex.y);
+                position.setZ( (i * 3) + 2, selectedVertex.z);
               }
             }
             position.needsUpdate = true;
@@ -852,7 +955,7 @@ export class TabWOKEditorState extends TabState {
     }
   }
 
-  selectVertex(index: number = -1) {
+  selectVertex(index: number = -1){
     this.selectedVertexIndex = index;
     this.ui3DRenderer.transformControls.detach();
     for (let i = 0; i < this.vertexHelpersGroup.children.length; i++) {

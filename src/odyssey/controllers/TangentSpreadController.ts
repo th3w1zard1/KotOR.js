@@ -28,14 +28,8 @@ export class TangentSpreadController extends OdysseyController {
     }
   }
 
-  animate(
-    manager: OdysseyModelAnimationManager,
-    anim: OdysseyModelAnimation,
-    last: IOdysseyControllerFrameGeneric,
-    next: IOdysseyControllerFrameGeneric,
-    _fl: number = 0
-  ) {
-    if (manager.modelNode.emitter) {
+  animate(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, last: IOdysseyControllerFrameGeneric, next: IOdysseyControllerFrameGeneric, fl: number = 0){
+    if(manager.modelNode.emitter){
       manager.modelNode.emitter.tangentSpread = OdysseyController.lerp1(last, next, fl);
     }
   }

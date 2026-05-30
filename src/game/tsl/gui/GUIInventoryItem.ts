@@ -90,7 +90,7 @@ export class GUIInventoryItem extends GUIProtoItem {
       this.widget.userData.iconMaterial = new THREE.SpriteMaterial({ map: null, color: 0xffffff });
       this.widget.userData.iconMaterial.transparent = true;
       this.widget.userData.iconMaterial.visible = false;
-      this.widget.userData.iconSprite = new THREE.Sprite(this.widget.userData.iconMaterial);
+      this.widget.userData.iconSprite = new THREE.Sprite( this.widget.userData.iconMaterial );
       //console.log(this.node.getIcon());
       TextureLoader.Load(this.node.getIcon()).then((texture: OdysseyTexture) => {
         if (texture) {

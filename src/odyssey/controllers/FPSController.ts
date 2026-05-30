@@ -20,36 +20,30 @@ export class FPSController extends OdysseyController {
     super(controller);
   }
 
-  setFrame(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, data: IOdysseyControllerFrameGeneric) {
-    if (manager.modelNode.emitter) {
+  setFrame(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, data: IOdysseyControllerFrameGeneric){
+    if(manager.modelNode.emitter){
       const em = manager.modelNode.emitter;
       const fps = data.value;
       em.fps = fps;
       em.material.uniforms.fps.value = fps;
-      if (fps > 0) {
+      if(fps > 0){
         em.material.defines.FPS = '';
-      } else {
+      }else{
         delete em.material.defines.FPS;
       }
       em.material.needsUpdate = true;
     }
   }
 
-  animate(
-    manager: OdysseyModelAnimationManager,
-    anim: OdysseyModelAnimation,
-    last: IOdysseyControllerFrameGeneric,
-    next: IOdysseyControllerFrameGeneric,
-    fl: number = 0
-  ) {
-    if (manager.modelNode.emitter) {
+  animate(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, last: IOdysseyControllerFrameGeneric, next: IOdysseyControllerFrameGeneric, fl: number = 0){
+    if(manager.modelNode.emitter){
       const em = manager.modelNode.emitter;
       const fps = OdysseyController.lerp1(last, next, fl);
       em.fps = fps;
       em.material.uniforms.fps.value = fps;
-      if (fps > 0) {
+      if(fps > 0){
         em.material.defines.FPS = '';
-      } else {
+      }else{
         delete em.material.defines.FPS;
       }
       em.material.needsUpdate = true;

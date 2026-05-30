@@ -1,11 +1,11 @@
-import * as KotOR from '@/apps/forge/KotOR';
-import * as fs from 'fs';
-import * as path from 'path';
-import { BinaryReader } from '@/utility/binary/BinaryReader';
-import { TXI } from '@/resource/TXI';
-import { ForgeState } from '@/apps/forge/states/ForgeState';
-import { ModalExtractionResultsState, ExtractionResults } from '@/apps/forge/states/modal/ModalExtractionResultsState';
-import { ModalExtractionProgressState } from '@/apps/forge/states/modal/ModalExtractionProgressState';
+import * as KotOR from "@/apps/forge/KotOR";
+import * as fs from "fs";
+import * as path from "path";
+import { BinaryReader } from "@/utility/binary/BinaryReader";
+import { TXI } from "@/resource/TXI";
+import { ForgeState } from "@/apps/forge/states/ForgeState";
+import { ModalExtractionResultsState, ExtractionResults } from "@/apps/forge/states/modal/ModalExtractionResultsState";
+import { ModalExtractionProgressState } from "@/apps/forge/states/modal/ModalExtractionProgressState";
 
 declare const dialog: any;
 
@@ -144,7 +144,7 @@ export async function collectModelAssets(
   primaryMdl?: Uint8Array,
   primaryMdx?: Uint8Array,
   /** When the open file is `*.mdl.ascii` (no MDX), use the already-parsed model from the viewer. */
-  primaryOdysseyModel?: KotOR.OdysseyModel
+  primaryOdysseyModel?: KotOR.OdysseyModel,
 ): Promise<void> {
   resref = resref.toLowerCase().trim();
   if (!resref || visited.has(resref)) return;
@@ -153,7 +153,7 @@ export async function collectModelAssets(
 
   let odysseyModel: KotOR.OdysseyModel | undefined;
   try {
-    const primaryParsedName = primaryOdysseyModel?.geometryHeader?.modelName?.toLowerCase().trim() ?? '';
+    const primaryParsedName = primaryOdysseyModel?.geometryHeader?.modelName?.toLowerCase().trim() ?? "";
     if (primaryOdysseyModel && primaryParsedName === resref) {
       odysseyModel = primaryOdysseyModel;
     } else if (primaryMdl && primaryMdx && primaryMdl.length && primaryMdx.length) {

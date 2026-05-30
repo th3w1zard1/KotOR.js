@@ -402,6 +402,8 @@ export class ForgeDoor extends ForgeGameObject {
       const model = await KotOR.OdysseyModel3D.FromMDL(mdl, {
         context: this.context,
         lighting: true,
+        disableMatrixUpdate: false,
+        editorMode: true
       });
       this.model = model;
     } catch (e) {

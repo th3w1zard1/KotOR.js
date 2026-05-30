@@ -168,6 +168,9 @@ export class ModuleObject {
   _locals: { Booleans: boolean[]; Numbers: Record<number, number> };
   objectsInside: any[];
   lockDialogOrientation: boolean = false;
+  lastInventoryDisturbType: number = 0;
+  lastInventoryDisturbItem: any = undefined;
+  lastItemAcquired: any = undefined;
   context: any;
 
   heartbeatTimer: any;
@@ -3740,16 +3743,16 @@ export class ModuleObject {
       if (this.forceVector) {
         this.forceVector = undefined;
       }
-      if (this.position) {
-        this.position = undefined;
-      }
-      if (this.rotation) {
-        this.rotation = undefined;
-      }
-      if (this.quaternion) {
-        this.quaternion = undefined;
-      }
-      if (this.box) {
+      // if(this.position){
+      //   this.position = undefined;
+      // }
+      // if(this.rotation){
+      //   this.rotation = undefined;
+      // }
+      // if(this.quaternion){
+      //   this.quaternion = undefined;
+      // }
+      if(this.box){
         this.box = undefined;
       }
       if (this.sphere) {
@@ -3764,6 +3767,8 @@ export class ModuleObject {
 
       if (this.area) {
         this.area.detachObject(this);
+      }else if (GameState.module.area){
+        GameState.module.area.detachObject(this);
       }
 
       //Clear references to prevent circular references

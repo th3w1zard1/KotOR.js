@@ -1,9 +1,9 @@
-import type { OdysseyModelAnimation } from '@/odyssey/OdysseyModelAnimation';
-import type { OdysseyModelAnimationManager } from '@/odyssey/OdysseyModelAnimationManager';
-import * as THREE from 'three';
-import { IOdysseyControllerFrameGeneric } from '@/interface/odyssey/controller/IOdysseyControllerFrameGeneric';
-import { IOdysseyControllerGeneric } from '@/interface/odyssey/controller/IOdysseyControllerGeneric';
-import { OdysseyModelControllerType } from '@/enums/odyssey/OdysseyModelControllerType';
+import type { OdysseyModelAnimation } from "@/odyssey/OdysseyModelAnimation";
+import type { OdysseyModelAnimationManager } from "@/odyssey/OdysseyModelAnimationManager";
+import * as THREE from "three";
+import { IOdysseyControllerFrameGeneric } from "@/interface/odyssey/controller/IOdysseyControllerFrameGeneric";
+import { IOdysseyControllerGeneric } from "@/interface/odyssey/controller/IOdysseyControllerGeneric";
+import { OdysseyModelControllerType } from "@/enums/odyssey/OdysseyModelControllerType";
 
 /**
  * OdysseyController class.
@@ -33,6 +33,10 @@ export class OdysseyController {
   /** Interpolate single-float keyframes (`value` only). */
   static lerp1(last: IOdysseyControllerFrameGeneric, next: IOdysseyControllerFrameGeneric, fl: number): number {
     return (next.value - last.value) * fl + last.value;
+  }
+
+  setFrame(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, data: IOdysseyControllerFrameGeneric){
+    
   }
 
   setFrame(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, data: IOdysseyControllerFrameGeneric) {}

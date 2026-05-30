@@ -20,8 +20,8 @@ export class ParticleRotationController extends OdysseyController {
     super(controller);
   }
 
-  setFrame(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, data: IOdysseyControllerFrameGeneric) {
-    if (manager.modelNode.emitter) {
+  setFrame(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, data: IOdysseyControllerFrameGeneric){
+    if(manager.modelNode.emitter){
       const em = manager.modelNode.emitter;
       em.angle = data.value ?? 0;
       em.material.uniforms.rotate.value = em.angle;
@@ -29,14 +29,8 @@ export class ParticleRotationController extends OdysseyController {
     }
   }
 
-  animate(
-    manager: OdysseyModelAnimationManager,
-    anim: OdysseyModelAnimation,
-    last: IOdysseyControllerFrameGeneric,
-    next: IOdysseyControllerFrameGeneric,
-    fl: number = 0
-  ) {
-    if (manager.modelNode.emitter) {
+  animate(manager: OdysseyModelAnimationManager, anim: OdysseyModelAnimation, last: IOdysseyControllerFrameGeneric, next: IOdysseyControllerFrameGeneric, fl: number = 0){
+    if(manager.modelNode.emitter){
       const em = manager.modelNode.emitter;
       const v = OdysseyController.lerp1(last, next, fl);
       em.angle = v;

@@ -1,8 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Form } from 'react-bootstrap';
-import * as KotOR from '@/apps/forge/KotOR';
-import { ModelViewerEditableTrack, ModelViewerTrackFilterScope, TabModelViewerState } from '@/apps/forge/states/tabs';
-import { useEffectOnce } from '@/apps/forge/helpers/UseEffectOnce';
+import React, { useEffect, useRef, useState } from "react";
+import { Form } from "react-bootstrap";
+import * as KotOR from "@/apps/forge/KotOR";
+import {
+  ModelViewerEditableTrack,
+  ModelViewerTrackFilterScope,
+  TabModelViewerState,
+} from "@/apps/forge/states/tabs";
+import { useEffectOnce } from "@/apps/forge/helpers/UseEffectOnce";
+
+import "@/apps/forge/components/KeyFrameTimelineComponent.scss";
 
 function formatTimelineClock(totalSeconds: number): string {
   if (!isFinite(totalSeconds) || totalSeconds < 0) totalSeconds = 0;
@@ -12,7 +18,7 @@ function formatTimelineClock(totalSeconds: number): string {
   return `${m}:${sec}`;
 }
 
-export const KeyFrameTimelineComponent = function (props: any) {
+export const KeyFrameTimelineComponent = function(props: any){
   const tab: TabModelViewerState = props.tab;
 
   const [currentAnimation, setCurrentAnimation] = useState<KotOR.OdysseyModelAnimation>();
@@ -36,10 +42,10 @@ export const KeyFrameTimelineComponent = function (props: any) {
   const [selectedKeyRef, setSelectedKeyRef] = useState<string | undefined>(undefined);
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
 
-  const onEditorFileLoad = function () {
-    setAnimations(tab.animations);
-    setCurrentAnimation(tab.currentAnimation);
-    setSelectedAnimationIndex(tab.selectedAnimationIndex);
+  const onEditorFileLoad = function(){
+    setAnimations( tab.animations );
+    setCurrentAnimation( tab.currentAnimation );
+    setSelectedAnimationIndex( tab.selectedAnimationIndex );
     setTracks(tab.getEditableTracks());
     setExpandedNodes({});
   };
@@ -65,7 +71,7 @@ export const KeyFrameTimelineComponent = function (props: any) {
     updateSeekerPosition();
   };
 
-  const onKeyframeEditorChange = function () {
+  const onKeyframeEditorChange = function(){
     setKeyframeEditorEnabled(tab.keyframeEditorEnabled);
     setTrackFilterScope(tab.trackFilterScope);
     setTracks(tab.getEditableTracks());
@@ -75,9 +81,9 @@ export const KeyFrameTimelineComponent = function (props: any) {
     } else {
       setSelectedKeyRef(undefined);
     }
-  };
+  }
 
-  const onPlay = function () {
+  const onPlay = function(){
     setPaused(false);
   };
 
@@ -103,8 +109,7 @@ export const KeyFrameTimelineComponent = function (props: any) {
     tab.addEventListener('onKeyFramesChange', onKeyframeEditorChange);
     tab.addEventListener('onTrackSelectionChange', onKeyframeEditorChange);
     tab.addEventListener('onKeySelectionChange', onKeyframeEditorChange);
-    return () => {
-      //destructor
+    return () => { //destructor
       tab.removeEventListener('onEditorFileLoad', onEditorFileLoad);
       tab.removeEventListener('onKeyFrameTrackZoomIn', onKeyFrameTrackZoomIn);
       tab.removeEventListener('onKeyFrameTrackZoomOut', onKeyFrameTrackZoomOut);
@@ -117,10 +122,10 @@ export const KeyFrameTimelineComponent = function (props: any) {
       tab.removeEventListener('onKeyFramesChange', onKeyframeEditorChange);
       tab.removeEventListener('onTrackSelectionChange', onKeyframeEditorChange);
       tab.removeEventListener('onKeySelectionChange', onKeyframeEditorChange);
-    };
+    }
   });
 
-  useEffect(() => {
+  useEffect( () => {
     setPanelHeight(keyframeWindowRef.current?.clientHeight || 0);
     if (keyframeWindowRef?.current) panelObserver.observe(keyframeWindowRef?.current);
   }, [keyframeWindowRef.current]);
@@ -136,6 +141,23 @@ export const KeyFrameTimelineComponent = function (props: any) {
     window.addEventListener('mouseup', onWindowMouseUp);
     return () => window.removeEventListener('mouseup', onWindowMouseUp);
   }, [tab]);
+
+  const timestamps: JSX.Element[] = [];
+  const trackContentRows = (() => {
+    const grouped = new Map<string, number>();
+    for (let i = 0; i < tracks.length; i++) {
+      const n = tracks[i].nodeName;
+      grouped.set(n, (grouped.get(n) || 0) + 1);
+    }
+    let rows = 0;
+    for (const [nodeName, controllerCount] of grouped.entries()) {
+      rows += 1; // node row
+      const expanded = expandedNodes[nodeName] !== false;
+      if (expanded) rows += controllerCount;
+    }
+    return Math.max(rows, 1);
+  })();
+  const trackContentHeight = Math.max(trackContentRows * 27, Math.max(panelHeight - 25, 54));
 
   const timestamps: JSX.Element[] = [];
   const trackContentRows = (() => {
@@ -174,11 +196,11 @@ export const KeyFrameTimelineComponent = function (props: any) {
     tab.stopAnimation();
   };
 
-  const onToggleEditor = function () {
+  const onToggleEditor = function(){
     tab.setKeyframeEditorEnabled(!keyframeEditorEnabled);
   };
 
-  const onCheckboxLoopChange = function (e: React.ChangeEvent<HTMLInputElement>) {
+  const onCheckboxLoopChange = function(e: React.ChangeEvent<HTMLInputElement>){
     tab.setLooping(e.target.checked);
     setLooping(e.target.checked);
   };
@@ -187,7 +209,7 @@ export const KeyFrameTimelineComponent = function (props: any) {
     const index = parseInt(e.target.value);
     tab.setAnimationByIndex(index);
     setTracks(tab.getEditableTracks());
-  };
+  }
 
   const onTrackFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const scope = e.target.value as ModelViewerTrackFilterScope;
@@ -211,13 +233,19 @@ export const KeyFrameTimelineComponent = function (props: any) {
     return !!target?.closest('.keyframe');
   };
 
+  const isKeyframeEvent = (e: React.MouseEvent<HTMLElement>): boolean => {
+    const target = e.target as HTMLElement | null;
+    return !!target?.closest('.keyframe');
+  };
+
   const onClickKeyFrameWindow = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isKeyframeEvent(e)) return;
     if (suppressTimelineClickRef.current) {
       suppressTimelineClickRef.current = false;
       return;
     }
-    if (waveformCanvasRef.current && waveformCanvasRef.current.parentElement) {
+    if(waveformCanvasRef.current && waveformCanvasRef.current.parentElement){
+
       //Update the lips elapsed time based on the seekbar position
       const position = getTimelinePixelPositionRelativeToMouseEvent(e);
       const time = getTimelinePixelPositionAsTime(position);
@@ -241,8 +269,8 @@ export const KeyFrameTimelineComponent = function (props: any) {
       tab.pause();
       clearTimeout(tab.scrubbingTimeout);
     }
-
-    if (tab.dragging_frame && typeof tab.dragging_frame.trackId === 'string') {
+    
+    if(tab.dragging_frame && typeof tab.dragging_frame.trackId === 'string'){
       keyframeDragMovedRef.current = true;
       tab.updateKey(tab.dragging_frame.trackId, tab.dragging_frame.keyIndex, { time }, { captureUndo: false });
     }
@@ -267,7 +295,7 @@ export const KeyFrameTimelineComponent = function (props: any) {
     tab.scrubbing = false;
     tab.dragging_frame = undefined;
     keyframeDragMovedRef.current = false;
-  };
+  }
 
   const onKeyframeMouseDown = (e: React.MouseEvent<HTMLDivElement>, trackId: string, keyIndex: number) => {
     e.stopPropagation();
@@ -299,8 +327,8 @@ export const KeyFrameTimelineComponent = function (props: any) {
   };
 
   const onScrollKeyFrameWindow = (e: React.UIEvent<HTMLDivElement>) => {
-    if (!e.target) return;
-  };
+    if(!e.target) return;
+  }
 
   const getTimelinePixelPositionRelativeToMouseEvent = (e: React.MouseEvent<HTMLDivElement>) => {
     if (waveformCanvasRef.current && waveformCanvasRef.current.parentElement) {
@@ -377,12 +405,7 @@ export const KeyFrameTimelineComponent = function (props: any) {
             <i className="fa-solid fa-rotate"></i>
             <input type="checkbox" checked={looping} onChange={onCheckboxLoopChange} />
           </label>
-          <button
-            className={`mvp-btn mvp-btn--edit ${keyframeEditorEnabled ? 'is-active' : ''}`}
-            onClick={onToggleEditor}
-          >
-            Edit
-          </button>
+          <button className={`mvp-btn mvp-btn--edit ${keyframeEditorEnabled ? 'is-active' : ''}`} onClick={onToggleEditor}>Edit</button>
           <Form.Select size="sm" value={trackFilterScope} onChange={onTrackFilterChange} style={{ width: 160 }}>
             <option value="all">All Tracks</option>
             <option value="selectedNode">Selected Node</option>
@@ -396,67 +419,22 @@ export const KeyFrameTimelineComponent = function (props: any) {
         </div>
         <div className="mvp-keyframe-toolbar__center">
           <div className="mvp-keyframe-toolbar__btn-group">
-            <button
-              title={!paused ? `Pause` : `Play`}
-              className={`mvp-btn mvp-btn--play fa-solid fa-${!paused ? `pause` : `play`}`}
-              onClick={onBtnPlayPause}
-            ></button>
+            <button title={!paused ? `Pause` : `Play`} className={`mvp-btn mvp-btn--play fa-solid fa-${!paused ? `pause` : `play`}`} onClick={onBtnPlayPause}></button>
             <button title="Stop" className="mvp-btn fa-solid fa-stop" onClick={onBtnStop}></button>
           </div>
         </div>
         <div className="mvp-keyframe-toolbar__right">
           <div className="mvp-keyframe-toolbar__btn-group">
-            <button
-              title="Timeline Zoom In"
-              className="mvp-btn fa-solid fa-magnifying-glass-plus"
-              onClick={onBtnZoomIn}
-            ></button>
-            <button
-              title="Timeline Zoom Out"
-              className="mvp-btn fa-solid fa-magnifying-glass-minus"
-              onClick={onBtnZoomOut}
-            ></button>
+            <button title="Timeline Zoom In" className="mvp-btn fa-solid fa-magnifying-glass-plus" onClick={onBtnZoomIn}></button>
+            <button title="Timeline Zoom Out" className="mvp-btn fa-solid fa-magnifying-glass-minus" onClick={onBtnZoomOut}></button>
           </div>
         </div>
       </div>
       <div className="mvp-keyframe-dock-timeline">
-        <div
-          ref={keyframeWindowRef as any}
-          className="keyframe-bar"
-          onClick={onClickKeyFrameWindow}
-          onMouseDown={onMouseDownKeyFrameWindow}
-          onMouseUp={onMouseUpKeyFrameWindow}
-          onMouseMove={onMouseMoveKeyFrameWindow}
-          onScroll={onScrollKeyFrameWindow}
-        >
-          <canvas
-            ref={waveformCanvasRef as any}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 200,
-              width: tab.getCurrentAnimationLength() * tab.timelineZoom,
-            }}
-          />
-          <div
-            className="keyframe-time-track"
-            style={{
-              top: 0,
-              right: 'initial',
-              width: 200 + tab.getCurrentAnimationLength() * tab.timelineZoom,
-              zIndex: 1,
-            }}
-          >
-            {timestamps}
-          </div>
-          <div
-            className="keyframe-track"
-            style={{
-              height: trackContentHeight,
-              right: 'initial',
-              width: 200 + tab.getCurrentAnimationLength() * tab.timelineZoom,
-            }}
-          >
+        <div ref={keyframeWindowRef as any} className="keyframe-bar" onClick={onClickKeyFrameWindow} onMouseDown={onMouseDownKeyFrameWindow} onMouseUp={onMouseUpKeyFrameWindow} onMouseMove={onMouseMoveKeyFrameWindow} onScroll={onScrollKeyFrameWindow}>
+          <canvas ref={waveformCanvasRef as any} style={{position: 'absolute', top: 0, left: 200, width: (tab.getCurrentAnimationLength() * tab.timelineZoom) }} />
+          <div className="keyframe-time-track" style={{ top: 0, right: 'initial', width: 200 + (tab.getCurrentAnimationLength() * tab.timelineZoom), zIndex: 1 }}>{ timestamps }</div>
+          <div className="keyframe-track" style={{ height: trackContentHeight, right: 'initial', width: 200 + (tab.getCurrentAnimationLength() * tab.timelineZoom) }}>
             <TrackTreeTimelineComponent
               tracks={tracks}
               timelineZoom={timelineZoom}
@@ -472,10 +450,7 @@ export const KeyFrameTimelineComponent = function (props: any) {
               onKeyframeMouseUp={onKeyframeMouseUp}
             />
           </div>
-          <div
-            className="keyframe-track-seeker"
-            style={{ top: 12.5, left: seekPositionLeft, marginLeft: 200, height: trackContentHeight, zIndex: 1 }}
-          >
+          <div className="keyframe-track-seeker" style={{top: 12.5, left: seekPositionLeft, marginLeft: 200, height: trackContentHeight, zIndex: 1}}>
             <div className="seeker-thumb"></div>
           </div>
         </div>
@@ -484,7 +459,9 @@ export const KeyFrameTimelineComponent = function (props: any) {
   );
 };
 
-const TrackTreeTimelineComponent = function (props: any) {
+}
+
+const TrackTreeTimelineComponent = function(props: any) {
   const tracks: ModelViewerEditableTrack[] = props.tracks;
   const timelineZoom = props.timelineZoom;
   const timelineOffset = props.timelineOffset;
@@ -494,10 +471,8 @@ const TrackTreeTimelineComponent = function (props: any) {
   const expandedNodes: Record<string, boolean> = props.expandedNodes;
   const onToggleNodeExpanded: (nodeName: string) => void = props.onToggleNodeExpanded;
   const onTrackSelect: (trackId: string) => void = props.onTrackSelect;
-  const onKeyframeClick: (e: React.MouseEvent<HTMLDivElement>, trackId: string, keyIndex: number) => void =
-    props.onKeyframeClick;
-  const onKeyframeMouseDown: (e: React.MouseEvent<HTMLDivElement>, trackId: string, keyIndex: number) => void =
-    props.onKeyframeMouseDown;
+  const onKeyframeClick: (e: React.MouseEvent<HTMLDivElement>, trackId: string, keyIndex: number) => void = props.onKeyframeClick;
+  const onKeyframeMouseDown: (e: React.MouseEvent<HTMLDivElement>, trackId: string, keyIndex: number) => void = props.onKeyframeMouseDown;
   const onKeyframeMouseUp: (e: React.MouseEvent<HTMLDivElement>) => void = props.onKeyframeMouseUp;
 
   const nodeMap = new Map<string, ModelViewerEditableTrack[]>();
@@ -524,22 +499,21 @@ const TrackTreeTimelineComponent = function (props: any) {
               </div>
               <div className="track-keyframes" style={{ position: 'relative' }} />
             </div>
-            {isExpanded &&
-              nodeTracks.map((track) => (
-                <TrackTimelineComponent
-                  key={track.id}
-                  track={track}
-                  timelineZoom={timelineZoom}
-                  timelineOffset={timelineOffset}
-                  selectedTrackId={selectedTrackId}
-                  selectedKeyRef={selectedKeyRef}
-                  keyframeEditorEnabled={keyframeEditorEnabled}
-                  onTrackSelect={onTrackSelect}
-                  onKeyframeClick={onKeyframeClick}
-                  onKeyframeMouseDown={onKeyframeMouseDown}
-                  onKeyframeMouseUp={onKeyframeMouseUp}
-                />
-              ))}
+            {isExpanded && nodeTracks.map((track) => (
+              <TrackTimelineComponent
+                key={track.id}
+                track={track}
+                timelineZoom={timelineZoom}
+                timelineOffset={timelineOffset}
+                selectedTrackId={selectedTrackId}
+                selectedKeyRef={selectedKeyRef}
+                keyframeEditorEnabled={keyframeEditorEnabled}
+                onTrackSelect={onTrackSelect}
+                onKeyframeClick={onKeyframeClick}
+                onKeyframeMouseDown={onKeyframeMouseDown}
+                onKeyframeMouseUp={onKeyframeMouseUp}
+              />
+            ))}
           </React.Fragment>
         );
       })}
@@ -547,7 +521,7 @@ const TrackTreeTimelineComponent = function (props: any) {
   );
 };
 
-const TrackTimelineComponent = function (props: any) {
+const TrackTimelineComponent = function(props: any) {
   const track: ModelViewerEditableTrack = props.track;
   const timelineZoom = props.timelineZoom;
   const timelineOffset = props.timelineOffset;
@@ -555,48 +529,42 @@ const TrackTimelineComponent = function (props: any) {
   const selectedKeyRef: string | undefined = props.selectedKeyRef;
   const keyframeEditorEnabled: boolean = props.keyframeEditorEnabled;
   const onTrackSelect: (trackId: string) => void = props.onTrackSelect;
-  const onKeyframeClick: (e: React.MouseEvent<HTMLDivElement>, trackId: string, keyIndex: number) => void =
-    props.onKeyframeClick;
-  const onKeyframeMouseDown: (e: React.MouseEvent<HTMLDivElement>, trackId: string, keyIndex: number) => void =
-    props.onKeyframeMouseDown;
+  const onKeyframeClick: (e: React.MouseEvent<HTMLDivElement>, trackId: string, keyIndex: number) => void = props.onKeyframeClick;
+  const onKeyframeMouseDown: (e: React.MouseEvent<HTMLDivElement>, trackId: string, keyIndex: number) => void = props.onKeyframeMouseDown;
   const onKeyframeMouseUp: (e: React.MouseEvent<HTMLDivElement>) => void = props.onKeyframeMouseUp;
 
   return (
     <div className="keyframe-track-wrapper controller" style={{ display: 'flex' }}>
       <div
         className="track-label"
-        style={{
-          width: timelineOffset,
-          cursor: 'pointer',
-          background: selectedTrackId === track.id ? 'rgba(70,120,255,0.15)' : undefined,
-        }}
+        style={{ width: timelineOffset, cursor: 'pointer', background: selectedTrackId === track.id ? 'rgba(70,120,255,0.15)' : undefined }}
         onClick={() => onTrackSelect(track.id)}
       >
         <i className={`fa-solid ${track.isCameraHook ? 'fa-video' : 'fa-circle'}`}></i>&nbsp;
-        <span style={{ opacity: 0.75 }}>
-          {KotOR.OdysseyModelControllerType[track.controllerType] ?? track.controllerType}
-        </span>
+        <span style={{ opacity: 0.75 }}>{KotOR.OdysseyModelControllerType[track.controllerType] ?? track.controllerType}</span>
       </div>
       <div className="track-keyframes" style={{ position: 'relative' }}>
-        {track.keys.map((keyframe, index) => {
-          const ref = `${track.id}:${index}`;
-          return (
-            <div
-              key={`controller-keyframe-${track.id}-${index}-${keyframe.time}`}
-              className="keyframe"
-              style={{
-                left: keyframe.time * timelineZoom,
-                color: selectedKeyRef === ref ? '#7fb2ff' : undefined,
-                cursor: keyframeEditorEnabled ? 'grab' : 'default',
-              }}
-              onClick={(e) => onKeyframeClick(e, track.id, index)}
-              onMouseDown={(e) => keyframeEditorEnabled && onKeyframeMouseDown(e, track.id, index)}
-              onMouseUp={onKeyframeMouseUp}
-            >
-              <i className="fa-solid fa-diamond"></i>
-            </div>
-          );
-        })}
+        {
+          track.keys.map( (keyframe, index) => {
+            const ref = `${track.id}:${index}`;
+            return (
+              <div
+                key={`controller-keyframe-${track.id}-${index}-${keyframe.time}`}
+                className="keyframe"
+                style={{
+                  left: keyframe.time * timelineZoom,
+                  color: selectedKeyRef === ref ? '#7fb2ff' : undefined,
+                  cursor: keyframeEditorEnabled ? 'grab' : 'default',
+                }}
+                onClick={(e) => onKeyframeClick(e, track.id, index)}
+                onMouseDown={(e) => keyframeEditorEnabled && onKeyframeMouseDown(e, track.id, index)}
+                onMouseUp={onKeyframeMouseUp}
+              >
+                <i className="fa-solid fa-diamond"></i>
+              </div>
+            );
+          })
+        }
       </div>
     </div>
   );

@@ -298,18 +298,18 @@ export class TwoDAObject {
    */
   toCSV(): string {
     const quoteIfNeeded = (v: any): string => {
-      if (v == null) return '';
+      if(v == null) return '';
       const s = String(v);
-      if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+      if(s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')){
         return '"' + s.replace(/"/g, '""') + '"';
       }
       return s;
     };
 
     let csv = '';
-    for (let i = 0; i < this.columns.length; i++) {
+    for(let i = 0; i < this.columns.length; i++){
       csv += quoteIfNeeded(this.columns[i]);
-      if (i < this.columns.length - 1) csv += ',';
+      if(i < this.columns.length - 1) csv += ',';
     }
     csv += '\n';
     const indexes = Object.keys(this.rows)
@@ -318,9 +318,9 @@ export class TwoDAObject {
     for (let i = 0; i < indexes.length; i++) {
       const index = indexes[i];
       const row = this.rows[index];
-      for (let j = 0; j < this.columns.length; j++) {
+      for(let j = 0; j < this.columns.length; j++){
         csv += quoteIfNeeded(row[this.columns[j]]);
-        if (j < this.columns.length - 1) csv += ',';
+        if(j < this.columns.length - 1) csv += ',';
       }
       csv += '\n';
     }
@@ -340,19 +340,19 @@ export class TwoDAObject {
       const result: string[] = [];
       let current = '';
       let inQuotes = false;
-      for (let i = 0; i < line.length; i++) {
+      for(let i = 0; i < line.length; i++){
         const ch = line[i];
-        if (ch === '"') {
-          if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
+        if(ch === '"'){
+          if(inQuotes && i + 1 < line.length && line[i + 1] === '"'){
             current += '"';
             i++;
-          } else {
+          }else{
             inQuotes = !inQuotes;
           }
-        } else if (ch === ',' && !inQuotes) {
+        }else if(ch === ',' && !inQuotes){
           result.push(current);
           current = '';
-        } else {
+        }else{
           current += ch;
         }
       }
@@ -361,23 +361,23 @@ export class TwoDAObject {
     };
 
     // Normalise line endings
-    const lines = csv.split('\n').map((l) => (l.endsWith('\r') ? l.slice(0, -1) : l));
+    const lines = csv.split('\n').map(l => l.endsWith('\r') ? l.slice(0, -1) : l);
     let lineIdx = 0;
 
-    while (lineIdx < lines.length && lines[lineIdx].trim() === '') lineIdx++;
-    if (lineIdx >= lines.length) return obj;
+    while(lineIdx < lines.length && lines[lineIdx].trim() === '') lineIdx++;
+    if(lineIdx >= lines.length) return obj;
 
     const headers = parseCSVLine(lines[lineIdx++]);
     obj.columns = headers;
     obj.ColumnCount = Math.max(0, headers.length - 1);
 
     let rowIdx = 0;
-    while (lineIdx < lines.length) {
+    while(lineIdx < lines.length){
       const line = lines[lineIdx++];
-      if (line.trim() === '') continue;
+      if(line.trim() === '') continue;
       const cells = parseCSVLine(line);
       const row: any = { __index: rowIdx };
-      for (let j = 0; j < headers.length; j++) {
+      for(let j = 0; j < headers.length; j++){
         row[headers[j]] = cells[j] !== undefined ? cells[j] : '****';
       }
       obj.rows[rowIdx] = row;

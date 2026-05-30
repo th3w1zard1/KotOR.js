@@ -81,8 +81,8 @@ export class ShaderOdysseyEmitter extends Shader {
     varying float alpha;
     varying vec2 vUv;
 
-    ${THREE.ShaderChunk['common']}
-    ${THREE.ShaderChunk['logdepthbuf_pars_vertex']}
+    ${THREE.ShaderChunk[ "common" ]}
+    ${THREE.ShaderChunk[ "logdepthbuf_pars_vertex" ]}
 
     // http://www.geeks3d.com/20141201/how-to-rotate-a-vertex-by-a-quaternion-in-glsl/
     vec3 applyQuaternionToVector( vec4 q, vec3 v ){
@@ -325,7 +325,7 @@ export class ShaderOdysseyEmitter extends Shader {
         #endif
       #endif
 
-      ${THREE.ShaderChunk['logdepthbuf_vertex']}
+      ${THREE.ShaderChunk[ "logdepthbuf_vertex" ]}
 
     }
   `;
@@ -349,7 +349,7 @@ export class ShaderOdysseyEmitter extends Shader {
     varying float alpha;
     varying vec2 vUv;
 
-    ${THREE.ShaderChunk['logdepthbuf_pars_fragment']}
+    ${THREE.ShaderChunk[ "logdepthbuf_pars_fragment" ]}
 
     void main() {
 
@@ -384,9 +384,10 @@ export class ShaderOdysseyEmitter extends Shader {
 
       gl_FragColor = vec4( finalColor, finalAlpha);
 
-      ${THREE.ShaderChunk['logdepthbuf_fragment']}
+      ${THREE.ShaderChunk[ "logdepthbuf_fragment" ]}
 
     }
   `;
   }
+
 }

@@ -13,32 +13,21 @@ import { pathParse } from '@/apps/forge/helpers/PathParse';
 declare const dialog: any;
 
 export type TabStateEventListenerTypes =
-  | 'onTabDestroyed'
-  | 'onTabRemoved'
-  | 'onTabShow'
-  | 'onTabHide'
-  | 'onTabNameChange'
-  | 'onEditorFileLoad'
-  | 'onEditorFileChange'
-  | 'onEditorFileSaved'
-  | 'onKeyDown'
-  | 'onKeyUp'
-  | 'onUndoApplied'
-  | 'onRedoApplied';
+  'onTabDestroyed'|'onTabRemoved'|'onTabShow'|'onTabHide'|'onTabNameChange'|'onEditorFileLoad'|'onEditorFileChange'|'onEditorFileSaved'|'onKeyDown'|'onKeyUp'|'onUndoApplied'|'onRedoApplied';
 
 export interface TabStateEventListeners {
-  onTabDestroyed: Function[];
-  onTabRemoved: Function[];
-  onTabShow: Function[];
-  onTabHide: Function[];
-  onTabNameChange: Function[];
-  onEditorFileLoad: Function[];
-  onEditorFileChange: Function[];
-  onEditorFileSaved: Function[];
-  onKeyDown: Function[];
-  onKeyUp: Function[];
-  onUndoApplied: Function[];
-  onRedoApplied: Function[];
+  onTabDestroyed: Function[],
+  onTabRemoved: Function[],
+  onTabShow: Function[],
+  onTabHide: Function[],
+  onTabNameChange: Function[],
+  onEditorFileLoad: Function[],
+  onEditorFileChange: Function[],
+  onEditorFileSaved: Function[],
+  onKeyDown: Function[],
+  onKeyUp: Function[],
+  onUndoApplied: Function[],
+  onRedoApplied: Function[],
 }
 
 export class TabState extends EventListenerModel {
@@ -142,7 +131,7 @@ export class TabState extends EventListenerModel {
     return this.redoStack.length > 0;
   }
 
-  constructor(options: BaseTabStateOptions = {}) {
+  constructor(options: BaseTabStateOptions = {}){
     super();
     this.isDestroyed = false;
 
@@ -193,14 +182,17 @@ export class TabState extends EventListenerModel {
     }
 
     this.#_onKeyDown = (e: KeyboardEvent) => {
+      if((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'w'){
+        if(this.isClosable){
+          e.preventDefault();
+          this.remove();
+          return;
+        }
+      }
       if ((e.ctrlKey || e.metaKey) && !e.altKey && this.shouldHandleUndoKeyboard(e)) {
         if (e.key === 'z') {
           e.preventDefault();
-          if (e.shiftKey) {
-            this.redo();
-          } else {
-            this.undo();
-          }
+          if (e.shiftKey) { this.redo(); } else { this.undo(); }
         } else if (e.key === 'y') {
           e.preventDefault();
           this.redo();
@@ -231,14 +223,10 @@ export class TabState extends EventListenerModel {
     this.#tabContentView = view;
   }
 
-  editorFileUpdated() {
-    if (this.file instanceof EditorFile) {
-      console.log('editor file updated', this.file.resref, this.file.ext, this.file);
-      if (this.file.unsaved_changes) {
-        this.setTabName(`${this.file.resref}.${this.file.ext} *`);
-      } else {
-        this.setTabName(`${this.file.resref}.${this.file.ext}`);
-      }
+  editorFileUpdated(){
+    if(this.file instanceof EditorFile){
+      console.log('editor file updated', this.file.resref, this.file.ext, this.file)
+      this.setTabName(`${this.file.resref}.${this.file.ext}`);
     }
   }
 
@@ -297,6 +285,9 @@ export class TabState extends EventListenerModel {
 
   remove() {
     this.visible = false;
+    if(ForgeState.project && this.file instanceof EditorFile){
+      ForgeState.project.removeFromOpenFileList(this.file);
+    }
     this.#tabManager.removeTab(this);
     this.processEventListener('onTabRemoved', [this]);
   }
@@ -534,7 +525,7 @@ export class TabState extends EventListenerModel {
             currentFile.handle = newHandle;
             try {
               const pathInfo = pathParse(newHandle.name);
-              currentFile.setPath(`file://system.dir/${newHandle.name}`);
+              currentFile.setPath(EditorFile.referenceURIForSystemVirtualName(newHandle.name));
               const saveBuffer = await this.getExportBuffer(pathInfo.name, pathInfo.ext);
               const ws: FileSystemWritableFileStream = await newHandle.createWritable();
               await ws.write((saveBuffer as any) || (new Uint8Array(0) as any));

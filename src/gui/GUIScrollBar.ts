@@ -1,16 +1,16 @@
 import type { GFFStruct } from '@/resource/GFFStruct';
 
-import * as THREE from 'three';
-import { TextureLoader } from '@/loaders';
-import { OdysseyTexture } from '@/three/odyssey/OdysseyTexture';
-import { TextureType } from '@/enums/loaders/TextureType';
-import { Mouse } from '@/controls/Mouse';
-import { GUIControlTypeMask } from '@/enums/gui/GUIControlTypeMask';
-import { ResolutionManager } from '@/managers/ResolutionManager';
-import { GUIControl } from '@/gui/GUIControl';
-import type { GUIListBox } from '@/gui/GUIListBox';
-import type { GameMenu } from '@/gui/GameMenu';
-import { GUIControlType } from '@/enums/gui/GUIControlType';
+import * as THREE from "three";
+import { TextureLoader } from "@/loaders";
+import { OdysseyTexture } from "@/three/odyssey/OdysseyTexture";
+import { TextureType } from "@/enums/loaders/TextureType";
+import { Mouse } from "@/controls/Mouse";
+import { GUIControlTypeMask } from "@/enums/gui/GUIControlTypeMask";
+import { ResolutionManager } from "@/managers/ResolutionManager";
+import { GUIControl } from "@/gui/GUIControl";
+import type { GUIListBox } from "@/gui/GUIListBox";
+import type { GameMenu } from "@/gui/GameMenu";
+import { GUIControlType } from "@/enums/gui/GUIControlType";
 
 /**
  * GUIScrollBar class.
@@ -278,10 +278,10 @@ export class GUIScrollBar extends GUIControl {
       this.thumb.position.y = (scrollBarHeight - this.thumb.scale.y) / 2 || 0;
     }
 
-    const maxThumbTravel = (scrollBarHeight - this.thumb.scale.y) / 2;
-    const scrollY = (this.thumb.position.y + maxThumbTravel) / (maxThumbTravel * 2);
-    this.scrollPos = 1.0 - scrollY;
-    this.update();
+      const maxThumbTravel = ((scrollBarHeight - this.thumb.scale.y)/2);
+      const scrollY = (this.thumb.position.y + maxThumbTravel) / (maxThumbTravel * 2);
+      this.scrollPos = 1.0 - scrollY;
+      this.update();
 
     //}
   }
@@ -300,8 +300,16 @@ export class GUIScrollBar extends GUIControl {
           ? this.list.getViewportInnerHeight()
           : this.list.extent.height;
 
+    if(this.list){
+
+      const contentHeight = this.list.getContentHeight();
+      const vh =
+        typeof this.list.getViewportInnerHeight === 'function'
+          ? this.list.getViewportInnerHeight()
+          : this.list.extent.height;
+
       let scaleY = contentHeight > 0 ? vh / contentHeight : 1;
-      if (scaleY > 1) {
+      if(scaleY > 1){
         scaleY = 1;
         this.thumb.scale.y = this.extent.height * scaleY;
       } else {
@@ -309,10 +317,10 @@ export class GUIScrollBar extends GUIControl {
         this.thumb.scale.y = this.extent.height * scaleY;
       }
 
-      if (this.list.maxScroll <= 0) {
+      if(this.list.maxScroll <= 0){
         this.list.scroll = 0;
         this.scrollPos = 0;
-      } else {
+      }else{
         let rawScroll = this.list.maxScroll * this.scrollPos;
         const step = this.list.getScrollStep();
         if (step > 0) {
@@ -322,6 +330,7 @@ export class GUIScrollBar extends GUIControl {
         this.scrollPos = this.list.scroll / this.list.maxScroll;
       }
       this.list.updateList();
+
     }
   }
 
@@ -342,13 +351,13 @@ export class GUIScrollBar extends GUIControl {
     // let wRatio = ResolutionManager.getViewportWidth() / this.menu.tGuiPanel.extent.width;
     // let hRatio = ResolutionManager.getViewportHeight() / this.menu.tGuiPanel.extent.height;
 
-    if (this.list) {
-      if (this.list.isScrollBarLeft()) {
-        this.anchorOffset.set(-(this.list.extent.width / 2 - this.extent.width / 2), 0);
-      } else {
-        this.anchorOffset.set(this.list.extent.width / 2 - this.extent.width / 2, 0);
-      }
-    } else {
+    if(this.list){
+      if(this.list.isScrollBarLeft()){
+        this.anchorOffset.set(-(this.list.extent.width/2 - this.extent.width/2), 0);
+      }else{
+        this.anchorOffset.set((this.list.extent.width/2 - this.extent.width/2 ), 0);
+      }      
+    }else{
       this.anchorOffset.set(0, 0);
     }
 

@@ -149,11 +149,13 @@ export class LIPObject {
     return true;
   }
 
-  update(delta = 0, model: OdysseyModel3D) {
-    if (model) {
+  update(delta = 0, model: OdysseyModel3D){
+    if(model){
+
       if (!this.keyframes.length) {
         if (this.elapsed >= this.duration) {
-          if (model.userData.moduleObject) model.userData.moduleObject.lipObject = undefined;
+          if (model.userData.moduleObject)
+            model.userData.moduleObject.lipObject = undefined;
           if (this.anim) {
             for (let i = 0; i < this.anim.nodes.length; i++) {
               let modelNode: any = model.animNodeCache[this.anim.nodes[i].name];

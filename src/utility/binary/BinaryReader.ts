@@ -201,7 +201,7 @@ export class BinaryReader {
   }
 
   #textDecoder: TextDecoder = new TextDecoder('latin1');
-  #textDecoderUTF8: TextDecoder = new TextDecoder('utf-8');
+  #textDecoderUTF8: TextDecoder = new TextDecoder('latin1');
 
   /**
    * Reads a string from the buffer.
@@ -211,12 +211,10 @@ export class BinaryReader {
    * @returns The string.
    */
   readChars(num: number, encoding: BufferEncoding = 'latin1'): string {
-    if (this.position >= this.buffer.length) return '\0';
-    const end = Math.min(this.position + num, this.buffer.length);
-    const slice = this.buffer.slice(this.position, end);
-    const isUtf8 = encoding === 'utf8' || encoding === 'utf-8';
-    this._value = isUtf8 ? this.#textDecoderUTF8.decode(slice) : this.#textDecoder.decode(slice);
-    this.position += slice.length;
+    if(this.position >= this.buffer.length)
+      return '\0';
+    this._value = encoding == 'utf8' ? this.#textDecoderUTF8.decode(this.buffer.slice(this.position, this.position + num)) : this.#textDecoder.decode(this.buffer.slice(this.position, this.position + num));
+    this.position += num;
     //console.log(num, this._value);
     return this._value;
   }

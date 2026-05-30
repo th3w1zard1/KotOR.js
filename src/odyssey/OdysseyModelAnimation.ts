@@ -68,10 +68,7 @@ export class OdysseyModelAnimation {
     //Animation
     this.length = this.odysseyModel.mdlReader.readSingle();
     this.transition = this.odysseyModel.mdlReader.readSingle();
-    this.animRoot = this.odysseyModel.mdlReader
-      .readChars(32)
-      .replace(/\0[\s\S]*$/g, '')
-      .toLowerCase();
+    this.animRoot = this.odysseyModel.mdlReader.readChars(32).replace(/\0[\s\S]*$/g,'').toLowerCase();
     this.modelName = this.animRoot;
 
     const _eventsDef = OdysseyModelUtility.ReadArrayDefinition(this.odysseyModel.mdlReader);

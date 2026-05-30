@@ -254,21 +254,29 @@ export class DLGNode {
     return replyIds;
   }
 
-  updateJournal() {
-    if (this.quest) {
+  updateJournal(){
+    const speaker = this.speaker || (this.nodeType == DLGNodeType.REPLY ? GameState.getCurrentPlayer() : this.speaker);
+    if(this.quest){
       const allowOverrideHigher = false;
       GameState.JournalManager.AddJournalQuestEntry(this.quest, this.questEntry, allowOverrideHigher);
     }
-    try {
-      const speakerName = this.speaker?.getName?.() ?? '';
-      console.log('saving', speakerName, this.text);
-      if (this.nodeType == DLGNodeType.ENTRY) {
-        GameState.DialogMessageManager.AddEntry(new DialogMessageEntry(speakerName, this.text));
-      } else {
-        if (this.text.length) {
-        }
+    if(!this.text || this.text.length == 0 || this.isContinueDialog()){
+      console.warn(`No text found for ${this.text} on ${this.speaker?.getName()}. not saving to journal`, this.isContinueDialog());
+      return;
+    }
+    try{
+      if(!speaker){
+        console.error(`No speaker found for ${this.text}`);
+        console.log(this);
+        return;
       }
-    } catch (e) {
+      console.log('saving', speaker.getName(), this.text);
+      GameState.DialogMessageManager.AddEntry(
+        new DialogMessageEntry(
+          speaker.getName(), this.text
+        )
+      )
+    }catch(e){
       console.error(e);
     }
   }
@@ -834,10 +842,7 @@ export class DLGNode {
 
   getCompiledString(): string {
     let text = this.text;
-    text = text
-      .split('##')[0]
-      .replaceAll(/\{.*?\}/gi, '')
-      .trim();
+    text = text.split('##')[0].replaceAll(/\{.*?\}/ig, '').trim();
     //if(this.speaker instanceof ModuleCreature){
     text = text.replace(
       /<FullName>/gm,

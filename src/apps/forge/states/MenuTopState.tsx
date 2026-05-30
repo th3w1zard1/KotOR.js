@@ -1,13 +1,21 @@
-import { EditorFile } from '@/apps/forge/EditorFile';
-import { MenuTopItem } from '@/apps/forge/MenuTopItem';
-import { Project } from '@/apps/forge/Project';
-import { ModalChangeGameState } from '@/apps/forge/components/modal/ModalChangeGame';
-import { ForgeState } from '@/apps/forge/states/ForgeState';
-import { TabQuickStartState } from '@/apps/forge/states/tabs/TabQuickStartState';
-import { TabState } from '@/apps/forge/states/tabs/TabState';
-import { TabUTCEditorState } from '@/apps/forge/states/tabs/TabUTCEditorState';
-import { TabUTDEditorState } from '@/apps/forge/states/tabs/TabUTDEditorState';
-import { TabUTPEditorState } from '@/apps/forge/states/tabs/TabUTPEditorState';
+import { EditorFile } from "@/apps/forge/EditorFile";
+import { MenuTopItem } from "@/apps/forge/MenuTopItem";
+import { Project } from "@/apps/forge/Project";
+import { ModalChangeGameState } from "@/apps/forge/components/modal/ModalChangeGame";
+import { ForgeState } from "@/apps/forge/states/ForgeState";
+import { TabQuickStartState } from "@/apps/forge/states/tabs/TabQuickStartState";
+import { TabState } from "@/apps/forge/states/tabs/TabState";
+import { TabUTCEditorState } from "@/apps/forge/states/tabs/TabUTCEditorState";
+import { TabUTDEditorState } from "@/apps/forge/states/tabs/TabUTDEditorState";
+import { TabUTPEditorState } from "@/apps/forge/states/tabs/TabUTPEditorState";
+
+import * as KotOR from "@/apps/forge/KotOR";
+import { ModalNewProjectState } from "@/apps/forge/states/modal/ModalNewProjectState";
+import { TabTextEditorState } from "@/apps/forge/states/tabs/TabTextEditorState";
+import { TabLIPEditorState } from "@/apps/forge/states/tabs/tab-lip-editor/TabLIPEditorState";
+import { compileAllNssInProject } from "@/apps/forge/helpers/ForgeNWScriptCompile";
+import { ModalBulkNssCompileResultsState } from "@/apps/forge/states/modal/ModalBulkNssCompileResultsState";
+import { AudioPlayerState } from "@/apps/forge/states/AudioPlayerState";
 
 import * as KotOR from '@/apps/forge/KotOR';
 import { ModalNewProjectState } from '@/apps/forge/states/modal/ModalNewProjectState';
@@ -52,8 +60,10 @@ export class MenuTopState {
   static menuItemView: MenuTopItem;
   static menuItemStartPage: MenuTopItem;
   static menuItemOpenModuleEditor: MenuTopItem;
+  static menuItemCompileAllProjectNss: MenuTopItem;
   static menuItemRecentFiles: MenuTopItem;
   static menuItemAudio: MenuTopItem;
+  static activeReverbProfile: number = -1;
 
   static #eventListeners: any = {};
 
@@ -263,9 +273,9 @@ export class MenuTopState {
 
     this.menuItemNewLIP = new MenuTopItem({
       name: 'Lip Sync File (.lip)',
-      onClick: function () {
+      onClick: function(){
         ForgeState.tabManager.addTab(new TabLIPEditorState());
-      },
+      }
     });
 
     this.menuItemNewScript = new MenuTopItem({
@@ -362,6 +372,25 @@ export class MenuTopState {
       },
     });
 
+    this.menuItemCompileAllProjectNss = new MenuTopItem({
+      name: 'Compile all NSS',
+      onClick: async () => {
+        if(!ForgeState.project){
+          alert('Open a project folder first (Project Explorer).');
+          return;
+        }
+        ForgeState.loaderShow();
+        try {
+          const outcome = await compileAllNssInProject();
+          const modal = new ModalBulkNssCompileResultsState(outcome);
+          modal.attachToModalManager(ForgeState.modalManager);
+          modal.open();
+        }finally{
+          ForgeState.loaderHide();
+        }
+      },
+    });
+
     this.menuItemAudio.items.push(
       new MenuTopItem({
         name: 'No Reverb',
@@ -416,35 +445,70 @@ export class MenuTopState {
       this.menuItemLabelNewUTW
     );
 
-    this.menuItemProject.items.push(this.menuItemOpenModuleEditor);
+    this.menuItemProject.items.push(
+      this.menuItemOpenModuleEditor,
+      this.menuItemCompileAllProjectNss,
+    );
+
+    this.menuItemView.items.push(
+      this.menuItemStartPage,
+    );
 
     this.menuItemView.items.push(this.menuItemStartPage);
   }
 
-  static buildAudioMenuItems() {
+  static setActiveReverbProfile(profileIndex: number){
+    this.activeReverbProfile = profileIndex;
+    KotOR.AudioEngine.GetAudioEngine().setReverbProfile(profileIndex);
+    this.buildAudioMenuItems();
+  }
+
+  static buildAudioMenuItems(){
     this.menuItemAudio.items = [];
     this.menuItemAudio.items.push(
       new MenuTopItem({
-        name: 'No Reverb',
+        name: 'Mini Audio Player',
+        checked: AudioPlayerState.isFloatingMiniPlayerVisible(),
         onClick: () => {
-          KotOR.AudioEngine.GetAudioEngine().setReverbProfile(-1);
+          AudioPlayerState.toggleFloatingMiniPlayer();
         },
+      }),
+    );
+
+    const reverbItems: MenuTopItem[] = [];
+    reverbItems.push(
+      new MenuTopItem({
+        name: 'No Reverb',
+        checked: this.activeReverbProfile === -1,
+        onClick: () => {
+          this.setActiveReverbProfile(-1);
+        }
       })
     );
+    reverbItems.push(new MenuTopItem({ type: 'separator' }));
 
     const eaxPresets = Object.values(KotOR.TwoDAManager.datatables.get('soundeax')?.rows || {});
     for (let i = 0; i < eaxPresets.length; i++) {
       const eaxPreset = eaxPresets[i] as any;
-      if (eaxPreset.label == 23) break;
-      this.menuItemAudio.items.push(
+      if(eaxPreset.label == 22) break;
+      reverbItems.push(
         new MenuTopItem({
           name: eaxPreset.label,
+          checked: this.activeReverbProfile === i,
           onClick: () => {
-            KotOR.AudioEngine.GetAudioEngine().setReverbProfile(i);
-          },
+            this.setActiveReverbProfile(i);
+          }
         })
       );
     }
+
+    this.menuItemAudio.items.push(
+      new MenuTopItem({
+        name: 'Reverb',
+        items: reverbItems
+      })
+    );
+
     this.triggerEventListener('onMenuTopItemsUpdated');
   }
 }

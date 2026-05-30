@@ -82,9 +82,9 @@ export class CharGenQuickOrCustom extends K1_CharGenQuickOrCustom {
         e.stopPropagation();
         //Game.CharGenMain.Hide();
 
-        try {
+        try{
           GameState.CharGenManager.selectedCreature.model.removeFromParent();
-        } catch (e) {}
+        }catch(e){}
 
         // this.manager.CharGenClass.getControlByName('_3D_MODEL'+(CharGenManager.selectedClass+1))
         //  .userData._3dView.scene.add(CharGenManager.selectedCreature.model);

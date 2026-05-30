@@ -1,39 +1,40 @@
-import { GameState } from '@/GameState';
-import type { INIConfig } from '@/engine/INIConfig';
-import { CreatureClass } from '@/combat/CreatureClass';
-import { TalentFeat } from '@/talents/TalentFeat';
-import { TalentSpell } from '@/talents/TalentSpell';
-import { TalentSkill } from '@/talents/TalentSkill';
-import { SWRace } from '@/engine/rules/SWRace';
-import { SWEffectIcon } from '@/engine/rules/SWEffectIcon';
-import { SWItemPropsDef } from '@/engine/rules/SWItemPropsDef';
-import { PazaakDeck } from '@/engine/minigames/PazaakDeck';
-import { SWXPTableEntry } from '@/engine/rules/SWXPTableEntry';
-import { SWPortrait } from '@/engine/rules/SWPortrait';
-import { SWFeatGain } from '@/engine/rules/SWFeatGain';
-import { SWSpellGain } from '@/engine/rules/SWSpellGain';
-import { SWEXPTable } from '@/engine/rules/SWEXPTable';
-import { SWDifficulty } from '@/engine/rules/SWDifficulty';
-import { SWBodyBag } from '@/engine/rules/SWBodyBag';
-import { SWHead } from '@/engine/rules/SWHead';
-import { SWPriorityGroup } from '@/engine/rules/SWPriorityGroup';
-import { SWEncounterDifficulty } from '@/engine/rules/SWEncounterDifficulty';
-import { SWGender } from '@/engine/rules/SWGender';
-import { SWPhenotype } from '@/engine/rules/SWPhenotype';
-import { SWSubRace } from '@/engine/rules/SWSubRace';
-import { SWSoundSet } from '@/engine/rules/SWSoundSet';
-import { SWCreatureSize } from '@/engine/rules/SWCreatureSize';
-import { SWCreatureSpeed } from '@/engine/rules/SWCreatureSpeed';
-import { SWRange } from '@/engine/rules/SWRange';
-import { SWFaction } from '@/engine/rules/SWFaction';
-import { SWBaseItem } from '@/engine/rules/SWBaseItem';
-import { SWCreatureAppearance } from '@/engine/rules/SWCreatureAppearance';
-import { SWDoorAppearance } from '@/engine/rules/SWDoorAppearance';
-import { SWPlaceableAppearance } from '@/engine/rules/SWPlaceableAppearance';
-import { SWCostTable } from '@/engine/rules/SWCostTable';
-import { SWFootStep } from '@/engine/rules/SWFootStep';
-import { SWWeaponSound } from '@/engine/rules/SWWeaponSound';
-import { SWAnimation } from '@/engine/rules/SWAnimation';
+import { GameState } from "@/GameState";
+import type { INIConfig } from "@/engine/INIConfig";
+import { CreatureClass } from "@/combat/CreatureClass";
+import { TalentFeat } from "@/talents/TalentFeat";
+import { TalentSpell } from "@/talents/TalentSpell";
+import { TalentSkill } from "@/talents/TalentSkill";
+import { SWRace } from "@/engine/rules/SWRace";
+import { SWEffectIcon } from "@/engine/rules/SWEffectIcon";
+import { SWItemPropsDef } from "@/engine/rules/SWItemPropsDef";
+import { PazaakDeck } from "@/engine/minigames/PazaakDeck";
+import { SWXPTableEntry } from "@/engine/rules/SWXPTableEntry";
+import { SWPortrait } from "@/engine/rules/SWPortrait";
+import { SWFeatGain } from "@/engine/rules/SWFeatGain";
+import { SWSpellGain } from "@/engine/rules/SWSpellGain";
+import { SWEXPTable } from "@/engine/rules/SWEXPTable";
+import { SWDifficulty } from "@/engine/rules/SWDifficulty";
+import { SWBodyBag } from "@/engine/rules/SWBodyBag";
+import { SWHead } from "@/engine/rules/SWHead";
+import { SWPriorityGroup } from "@/engine/rules/SWPriorityGroup";
+import { SWEncounterDifficulty } from "@/engine/rules/SWEncounterDifficulty";
+import { SWGender } from "@/engine/rules/SWGender";
+import { SWPhenotype } from "@/engine/rules/SWPhenotype";
+import { SWSubRace } from "@/engine/rules/SWSubRace";
+import { SWSoundSet } from "@/engine/rules/SWSoundSet";
+import { SWCreatureSize } from "@/engine/rules/SWCreatureSize";
+import { SWCreatureSpeed } from "@/engine/rules/SWCreatureSpeed";
+import { SWRange } from "@/engine/rules/SWRange";
+import { SWFaction } from "@/engine/rules/SWFaction";
+import { SWBaseItem } from "@/engine/rules/SWBaseItem";
+import { SWCreatureAppearance } from "@/engine/rules/SWCreatureAppearance";
+import { SWDoorAppearance } from "@/engine/rules/SWDoorAppearance";
+import { SWPlaceableAppearance } from "@/engine/rules/SWPlaceableAppearance";
+import { SWCostTable } from "@/engine/rules/SWCostTable";
+import { SWFootStep } from "@/engine/rules/SWFootStep";
+import { SWWeaponSound } from "@/engine/rules/SWWeaponSound";
+import { SWAnimation } from "@/engine/rules/SWAnimation";
+import { AudioPriorityGroup } from "@/enums/audio/AudioPriorityGroup";
 
 /**
  * SWRuleSet class.
@@ -129,6 +130,20 @@ export class SWRuleSet {
 
   static animations: SWAnimation[] = [];
   static animationCount: number = 0;
+
+  static getPriorityGroupById(id: number = AudioPriorityGroup.DEFAULT): SWPriorityGroup {
+    if(Number.isFinite(id) && SWRuleSet.priorityGroups[id]){
+      return SWRuleSet.priorityGroups[id];
+    }
+
+    if(SWRuleSet.priorityGroups[AudioPriorityGroup.DEFAULT]){
+      return SWRuleSet.priorityGroups[AudioPriorityGroup.DEFAULT];
+    }
+
+    return SWRuleSet.priorityGroups[0];
+  }
+
+  static Init(){
 
   static Init() {
     /**
@@ -529,10 +544,10 @@ export class SWRuleSet {
      * Initialize Animations
      */
     const animations = GameState.TwoDAManager.datatables.get('animations');
-    if (animations) {
+    if(animations){
       SWRuleSet.animationCount = animations.RowCount;
       SWRuleSet.animations = new Array(SWRuleSet.animationCount);
-      for (let i = 0; i < animations.RowCount; i++) {
+      for(let i = 0; i < animations.RowCount; i++){
         SWRuleSet.animations[i] = SWAnimation.From2DA(animations.rows[i]);
       }
     }

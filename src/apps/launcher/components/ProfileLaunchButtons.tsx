@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ApplicationEnvironment } from '@/enums/ApplicationEnvironment';
-import { ApplicationProfile } from '@/utility/ApplicationProfile';
-import { ConfigClient } from '@/utility/ConfigClient';
-import { useApp } from '@/apps/launcher/context/AppContext';
+import React, { useEffect, useMemo, useState } from "react";
+import { ApplicationEnvironment } from "@/enums/ApplicationEnvironment";
+import { ApplicationProfile } from "@/utility/ApplicationProfile";
+import { ConfigClient } from "@/utility/ConfigClient";
+import { useApp } from "@/apps/launcher/context/AppContext";
 
 export interface ProfileLaunchButtonsProps {
   profile: any;
@@ -12,7 +12,7 @@ export const ProfileLaunchButtons = function (props: ProfileLaunchButtonsProps) 
   const profile = props.profile;
   const appContext = useApp();
   const [profileCategoriesValue, setProfileCategories] = appContext.profileCategories;
-  const isForge = profile.name == 'KotOR Forge';
+  const isForge = profile.name == "KotOR Forge";
 
   const [render, rerender] = useState(false);
   const [selectValue, setSelectValue] = useState<any>('js');
@@ -24,18 +24,16 @@ export const ProfileLaunchButtons = function (props: ProfileLaunchButtonsProps) 
 
   useEffect(() => {
     if (!isForge || !forgeCompatibleProfiles.length) return;
-    if (forgeSelectValue == null || forgeSelectValue === '') {
+    if (forgeSelectValue == null || forgeSelectValue === "") {
       setForgeSelectValue(forgeCompatibleProfiles[0].key);
     }
   }, [isForge, forgeCompatibleProfiles, forgeSelectValue]);
 
-  const isLocateRequired =
-    ApplicationProfile.ENV == ApplicationEnvironment.ELECTRON && !!profile.locate_required && !profile.directory;
+  const isLocateRequired = (ApplicationProfile.ENV == ApplicationEnvironment.ELECTRON && !!profile.locate_required) && !profile.directory
 
   const launchLabel = profile.category == 'game' ? 'PLAY' : 'OPEN';
 
-  const hasExecutableSupport =
-    ApplicationProfile.ENV == ApplicationEnvironment.ELECTRON && profile.executable ? true : false;
+  const hasExecutableSupport = (ApplicationProfile.ENV == ApplicationEnvironment.ELECTRON && profile.executable) ? true: false;
 
   const onSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectValue(e.target.value);
@@ -86,15 +84,12 @@ export const ProfileLaunchButtons = function (props: ProfileLaunchButtonsProps) 
   };
 
   const btnLaunch = () => {
-    const clean_profile = Object.assign({}, profile);
-    if (isForge) {
+    let clean_profile = Object.assign({}, profile);
+    if(isForge){
       const effectiveGameKey = forgeSelectValue || forgeCompatibleProfiles[0]?.key;
-      let clean_game_profile = Object.assign(
-        {},
-        forgeCompatibleProfiles.find((p: any) => p.key == effectiveGameKey)
-      );
+      let clean_game_profile = Object.assign({}, forgeCompatibleProfiles.find( (p: any) => p.key == effectiveGameKey));
       if (!clean_game_profile?.key) return;
-      if (ApplicationProfile.ENV == ApplicationEnvironment.ELECTRON) {
+      if(ApplicationProfile.ENV == ApplicationEnvironment.ELECTRON){
         clean_profile.key = clean_game_profile.key;
         window.electron.launchProfile(clean_profile);
       } else {
@@ -130,26 +125,19 @@ export const ProfileLaunchButtons = function (props: ProfileLaunchButtonsProps) 
               <option value="js">{profile.name} - JS</option>
               <option value="executable">{profile.name} - Retail</option>
             </select>
-          </div>
-        ) : isForge ? (
-          <div className="launch-select">
-            <select
-              className="select"
-              onChange={onForgeSelectChange}
-              value={forgeSelectValue ?? forgeCompatibleProfiles[0]?.key ?? ''}
-            >
-              {forgeCompatibleProfiles.map((p: any, index: number) => {
-                return (
-                  <option key={p.name} value={p.key}>
-                    {p.name}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-        ) : (
-          <></>
-        )}
+          </div> : isForge ? (
+            <div className="launch-select">
+              <select className="select" onChange={onForgeSelectChange} value={forgeSelectValue ?? forgeCompatibleProfiles[0]?.key ?? ""}>
+                {forgeCompatibleProfiles.map((p: any, index: number) => {
+                    return (
+                      <option key={p.name} value={p.key}>{p.name}</option>
+                    )
+                  }
+                )}
+              </select>
+            </div>
+          ) : <></>
+        }
         <div className="launch-btns">
           <a href="#" className="btn-launch" key="launch-btn-launch" onClick={onLaunchClick}>
             {launchLabel}

@@ -89,7 +89,7 @@ for (let i = 0; i < 1024; i++) {
 // Pre-compute YUV to RGB coefficients for better performance
 const YUV_TO_RGB_R = [298, 0, 409]; // [Y, U, V] coefficients for R
 const YUV_TO_RGB_G = [298, -100, -208]; // [Y, U, V] coefficients for G
-const YUV_TO_RGB_B = [298, 516, 0]; // [Y, U, V] coefficients for B
+const YUV_TO_RGB_B = [298, 516, 0];    // [Y, U, V] coefficients for B
 
 function yuvToRGBA(yuv: YUVFrame): ArrayBuffer {
   const { width, height, y, u, v, linesizeY, linesizeU, linesizeV } = yuv;

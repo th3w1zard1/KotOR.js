@@ -1,27 +1,21 @@
-import { EditorFile } from '@/apps/forge/EditorFile';
-import { EventListenerModel } from '@/apps/forge/EventListenerModel';
-import { TabStoreState } from '@/apps/forge/interfaces/TabStoreState';
-import {
-  TabBIKPlayerState,
-  TabGFFEditorState,
-  TabImageViewerState,
-  TabModelViewerState,
-  TabModuleEditorState,
-  TabQuickStartState,
-  TabTwoDAEditorState,
-  TabUTCEditorState,
-  TabUTDEditorState,
-  TabUTPEditorState,
-  TabState,
-} from '@/apps/forge/states/tabs';
+import { EditorFile } from "@/apps/forge/EditorFile";
+import { EventListenerModel } from "@/apps/forge/EventListenerModel";
+import { TabStoreState } from "@/apps/forge/interfaces/TabStoreState";
+import { 
+  TabBIKPlayerState, TabGFFEditorState, TabHexEditorState, TabImageViewerState, TabModelViewerState, 
+  TabModuleEditorState, TabQuickStartState, TabSSFEditorState, TabTwoDAEditorState, 
+  TabUTCEditorState, TabUTDEditorState, TabUTPEditorState, TabState
+} from "@/apps/forge/states/tabs";
 
-export type TabManagerEventListenerTypes = 'onTabAdded' | 'onTabRemoved' | 'onTabShow' | 'onTabHide';
+export type TabManagerEventListenerTypes =
+  'onTabAdded'|'onTabRemoved'|'onTabShow'|'onTabHide'|'onTabsReordered';
 
 export interface TabManagerEventListeners {
-  onTabAdded: Function[];
-  onTabRemoved: Function[];
-  onTabShow: Function[];
-  onTabHide: Function[];
+  onTabAdded: Function[],
+  onTabRemoved: Function[],
+  onTabShow: Function[],
+  onTabHide: Function[],
+  onTabsReordered: Function[],
 }
 
 export class EditorTabManager extends EventListenerModel {
@@ -106,6 +100,27 @@ export class EditorTabManager extends EventListenerModel {
     this.processEventListener('onTabRemoved');
   }
 
+  moveTab(fromIndex: number, toIndex: number){
+    if(!Number.isInteger(fromIndex) || !Number.isInteger(toIndex)){
+      return false;
+    }
+    const maxIndex = this.tabs.length - 1;
+    if(fromIndex < 0 || toIndex < 0 || fromIndex > maxIndex || toIndex > maxIndex){
+      return false;
+    }
+    if(fromIndex === toIndex){
+      return false;
+    }
+
+    const [tab] = this.tabs.splice(fromIndex, 1);
+    if(!tab){
+      return false;
+    }
+    this.tabs.splice(toIndex, 0, tab);
+    this.processEventListener('onTabsReordered', [fromIndex, toIndex, tab]);
+    return true;
+  }
+
   //Checks the supplied resource ID against all open tabs and returns tab if it is found
   isResourceIdOpenInTab(resID: number) {
     if (resID) {
@@ -156,8 +171,8 @@ export class EditorTabManager extends EventListenerModel {
   }
 
   restoreTabState(tabState: TabStoreState) {
-    if (tabState.file) {
-      tabState.file = Object.assign(new EditorFile(), tabState.file);
+    if(tabState.file){
+      tabState.file = EditorFile.revive(tabState.file as Partial<EditorFile>);
       console.log('file', tabState.file);
     }
     switch (tabState.type) {
@@ -177,8 +192,20 @@ export class EditorTabManager extends EventListenerModel {
         this.addTab(new TabModuleEditorState({ editorFile: tabState.file }));
         break;
       case 'TabTwoDAEditorState':
-        this.addTab(new TabTwoDAEditorState({ editorFile: tabState.file }));
-        break;
+        this.addTab(
+          new TabTwoDAEditorState({editorFile: tabState.file})
+        );
+      break;
+      case 'TabSSFEditorState':
+        this.addTab(
+          new TabSSFEditorState({editorFile: tabState.file})
+        );
+      break;
+      case 'TabHexEditorState':
+        this.addTab(
+          new TabHexEditorState({editorFile: tabState.file})
+        );
+      break;
       case 'TabUTCEditorState':
         this.addTab(new TabUTCEditorState({ editorFile: tabState.file }));
         break;

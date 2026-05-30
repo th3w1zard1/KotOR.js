@@ -1,8 +1,8 @@
-import React from 'react';
-import { KotORModal } from '@/apps/game/components/modal/modal';
-import { useApp } from '@/apps/game/context/AppContext';
-import { ApplicationEnvironment } from '@/apps/game/KotOR';
-import GrantAccessInfo from '@/apps/common/components/grantAccess/GrantAccessInfo';
+import React from "react";
+import { KotORModal } from "@/apps/game/components/modal/modal";
+import { useApp } from "@/apps/game/context/AppContext";
+import { ApplicationEnvironment } from "@/apps/game/KotOR";
+import GrantAccessInfo from "@/apps/common/components/grantAccess/GrantAccessInfo";
 
 export const ModalGrantAccess = () => {
   const appContext = useApp();
@@ -64,13 +64,13 @@ export const ModalGrantAccess = () => {
   };
 
   return (
-    <KotORModal
-      title="Grant Access"
-      show={true}
+    <KotORModal 
+      title="Grant Access" 
+      show={true} 
       className="forge-style-modal"
-      onCancel={onCancel}
-      onOk={onOk}
-      cancelText="QUIT"
+      onCancel={onCancel} 
+      onOk={onOk} 
+      cancelText="QUIT" 
       okText="GRANT ACCESS"
     >
       <GrantAccessInfo />

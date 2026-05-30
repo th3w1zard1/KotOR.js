@@ -16,17 +16,17 @@ export interface KotORModalProps {
   gameKey?: string;
 }
 
-export const KotORModal = ({
-  children,
-  show,
-  title,
-  className = '',
-  enableCancel = true,
-  enableOk = true,
-  cancelText = 'CANCEL',
-  okText = 'OK',
-  onCancel,
-  onOk,
+export const KotORModal = ({ 
+  children, 
+  show, 
+  title, 
+  className = "",
+  enableCancel = true, 
+  enableOk = true, 
+  cancelText = "CANCEL",
+  okText = "OK",
+  onCancel, 
+  onOk
 }: KotORModalProps) => {
   const appContext = useApp();
   const [gameKey] = appContext.gameKey;
@@ -53,23 +53,13 @@ export const KotORModal = ({
   };
 
   return (
-    isVisible && (
-      <div className={`kotor-modal-backdrop ${gameKey} ${className} ${isVisible ? 'visible' : ''}`}>
-        <div className="kotor-modal">
-          <h2 className="modal-heading">{title}</h2>
-          <div className="modal-content">{children}</div>
-          <div className="modal-actions">
-            {enableCancel && (
-              <button className="modal-button" onClick={handleCancel}>
-                {cancelText}
-              </button>
-            )}
-            {enableOk && (
-              <button className="modal-button" onClick={handleOk}>
-                {okText}
-              </button>
-            )}
-          </div>
+    isVisible && <div className={`kotor-modal-backdrop ${gameKey} ${className} ${isVisible ? "visible" : ""}`}>
+      <div className="kotor-modal"> 
+        <h2 className="modal-heading">{title}</h2>
+        <div className="modal-content">{children}</div>
+        <div className="modal-actions">
+          {enableCancel && <button className="modal-button" onClick={handleCancel}>{cancelText}</button>}
+          {enableOk && <button className="modal-button" onClick={handleOk}>{okText}</button>}
         </div>
       </div>
     )

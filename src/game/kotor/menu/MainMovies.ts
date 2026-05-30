@@ -76,11 +76,7 @@ export class MainMovies extends GameMenu {
       });
       this._button_b = this.BTN_BACK;
       this.LB_MOVIES.protoItem.extent.height = 64;
-      this.LB_MOVIES.setTextColor(
-        this.LB_MOVIES.defaultColor.r,
-        this.LB_MOVIES.defaultColor.g,
-        this.LB_MOVIES.defaultColor.b
-      );
+      this.LB_MOVIES.setTextColor(this.LB_MOVIES.defaultColor.r, this.LB_MOVIES.defaultColor.g, this.LB_MOVIES.defaultColor.b);
       this.LB_MOVIES.onClicked = (movie: GUIMovieItem, control: any, index: number) => {
         console.log(movie);
         GameState.VideoManager.playMovie(movie.name, true);
@@ -100,21 +96,13 @@ export class MainMovies extends GameMenu {
       }
 
       this.movieList.sort((a, b) => a.order - b.order);
-      for (const movie of this.movieList) {
-        this.LB_MOVIES.addItem(new GUIMovieItem(movie));
-      }
-      this.LB_MOVIES.updateList();
       resolve();
     });
   }
 
   show() {
     super.show();
-    this.LB_MOVIES.clearItems();
-    for (const movie of this.movieList) {
-      this.LB_MOVIES.addItem(new GUIMovieItem(movie));
-    }
-    this.LB_MOVIES.updateList();
+    this.LB_MOVIES.setItems(this.movieList.map(m => new GUIMovieItem(m)));
     this.LB_MOVIES.show();
   }
 }

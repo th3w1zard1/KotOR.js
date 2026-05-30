@@ -1,20 +1,20 @@
-import * as THREE from 'three';
-import { GFFObject } from '@/resource/GFFObject';
-import { OdysseyTexture } from '@/three/odyssey/OdysseyTexture';
-import { ResourceTypes } from '@/resource/ResourceTypes';
-import { GameState } from '@/GameState';
-import { EngineMode } from '@/enums/engine/EngineMode';
-import type { MenuManager } from '@/managers/MenuManager';
-import { ResolutionManager } from '@/managers/ResolutionManager';
-import { ShaderManager } from '@/managers/ShaderManager';
-import { ResourceLoader, TextureLoader } from '@/loaders';
-import { GUIControl } from '@/gui/GUIControl';
-import { GUIControlFactory } from '@/gui/GUIControlFactory';
-import { BitWise } from '@/utility/BitWise';
-import { GUIControlTypeMask } from '@/enums/gui/GUIControlTypeMask';
-import { Mouse } from '@/controls/Mouse';
-import { KeyMapper } from '@/controls';
-import { shouldSuppressGameMenuHoverForListRow } from '@/gui/listrow/listRowHover';
+import * as THREE from "three";
+import { GFFObject } from "@/resource/GFFObject";
+import { OdysseyTexture } from "@/three/odyssey/OdysseyTexture";
+import { ResourceTypes } from "@/resource/ResourceTypes";
+import { GameState } from "@/GameState";
+import { EngineMode } from "@/enums/engine/EngineMode";
+import type { MenuManager } from "@/managers/MenuManager";
+import { ResolutionManager } from "@/managers/ResolutionManager";
+import { ShaderManager } from "@/managers/ShaderManager"
+import { ResourceLoader, TextureLoader } from "@/loaders";
+import { GUIControl } from "@/gui/GUIControl";
+import { GUIControlFactory } from "@/gui/GUIControlFactory";
+import { BitWise } from "@/utility/BitWise";
+import { GUIControlTypeMask } from "@/enums/gui/GUIControlTypeMask";
+import { Mouse } from "@/controls/Mouse";
+import { KeyMapper } from "@/controls";
+import { shouldSuppressGameMenuHoverForListRow } from "@/gui/listrow/listRowHover";
 
 /**
  * GameMenu class.
@@ -146,8 +146,8 @@ export class GameMenu {
 
     await this.menuControlInitializer();
 
-    await TextureLoader.LoadQueue();
-    GameState.PerformanceMonitor.stop(this.constructor.name + '.buildMenu');
+    // await TextureLoader.LoadQueue();
+    GameState.PerformanceMonitor.stop(this.constructor.name+'.buildMenu');
     return this;
   }
 
@@ -318,7 +318,10 @@ export class GameMenu {
   setWidgetHoverActive(control: GUIControl, bActive: boolean = false) {
     if (!BitWise.InstanceOfObject(control, GUIControlTypeMask.GUIControl)) return false;
 
-    if (shouldSuppressGameMenuHoverForListRow(control)) {
+    if(!BitWise.InstanceOfObject(control, GUIControlTypeMask.GUIControl))
+      return false;
+
+    if(shouldSuppressGameMenuHoverForListRow(control)){
       return false;
     }
 
@@ -400,28 +403,28 @@ export class GameMenu {
     }
   }
 
-  triggerControllerDUpPress() {
-    if (
+  triggerControllerDUpPress(){
+    if(
       this.selectedControl &&
       BitWise.InstanceOfObject(this.selectedControl.objectType, GUIControlTypeMask.GUIListBox)
-    ) {
+    ){
       (this.selectedControl as GUIControl & { directionalNavigate(dir: string): void }).directionalNavigate('up');
       return;
     }
-    if (this.manager.activeGUIElement) {
+    if(this.manager.activeGUIElement){
       //this.manager.activeGUIElement.click();
     }
   }
 
-  triggerControllerDDownPress() {
-    if (
+  triggerControllerDDownPress(){
+    if(
       this.selectedControl &&
       BitWise.InstanceOfObject(this.selectedControl.objectType, GUIControlTypeMask.GUIListBox)
-    ) {
+    ){
       (this.selectedControl as GUIControl & { directionalNavigate(dir: string): void }).directionalNavigate('down');
       return;
     }
-    if (this.manager.activeGUIElement) {
+    if(this.manager.activeGUIElement){
       //this.manager.activeGUIElement.click();
     }
   }
@@ -498,23 +501,11 @@ export class GameMenu {
     }
   }
 
-  gameStringParse(text: string) {
-    text = text
-      .split('##')[0]
-      .replaceAll(/\{.*?\}/gi, '')
-      .trim();
-    text = text.replace(
-      /<FullName>/gm,
-      GameState.PartyManager.ActualPlayerTemplate?.getFieldByLabel('FirstName')?.getValue()
-    );
-    text = text.replace(
-      /<FirstName>/gm,
-      GameState.PartyManager.ActualPlayerTemplate?.getFieldByLabel('FirstName')?.getValue()
-    );
-    text = text.replace(
-      /<LastName>/gm,
-      GameState.PartyManager.ActualPlayerTemplate?.getFieldByLabel('LastName')?.getValue()
-    );
+  gameStringParse(text: string){
+    text = text.split('##')[0].replaceAll(/\{.*?\}/ig, '').trim();
+    text = text.replace(/<FullName>/gm, GameState.PartyManager.ActualPlayerTemplate?.getFieldByLabel('FirstName')?.getValue());
+    text = text.replace(/<FirstName>/gm, GameState.PartyManager.ActualPlayerTemplate?.getFieldByLabel('FirstName')?.getValue());
+    text = text.replace(/<LastName>/gm, GameState.PartyManager.ActualPlayerTemplate?.getFieldByLabel('LastName')?.getValue());
 
     KeyMapper.ACTIONS_ALL.forEach((keymap) => {
       text = text.replace(keymap.tokenRegEx, keymap.character);

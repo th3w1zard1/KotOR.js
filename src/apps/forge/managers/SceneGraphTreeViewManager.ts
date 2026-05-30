@@ -43,7 +43,7 @@ export class SceneGraphTreeViewManager extends EventListenerModel {
     this.rebuild();
   }
 
-  syncSelection(object: any) {
+  syncSelection(object: any){
     const resolved = this.resolveOdysseyObject(object);
     this.sceneNode.traverseChildren((node: SceneGraphNode) => {
       if (node.data != null && node.data === resolved) {
@@ -53,6 +53,20 @@ export class SceneGraphTreeViewManager extends EventListenerModel {
       }
     });
   }
+
+  private resolveOdysseyObject(object: any): any {
+    if (!object) return undefined;
+    let current = object;
+    while (current) {
+      if (current instanceof OdysseyObject3D && current.odysseyModelNode) {
+        return current;
+      }
+      current = current.parent;
+    }
+    return object;
+  }
+
+  rebuild(){
 
   private resolveOdysseyObject(object: any): any {
     if (!object) return undefined;

@@ -107,8 +107,7 @@ export class InGameConfirm extends GameMenu {
     }
 
     this.LB_MESSAGE.extent.top = 0;
-    this.LB_MESSAGE.clearItems();
-    this.LB_MESSAGE.addItem(GameState.TLKManager.GetStringById(strRef).Value);
+    this.LB_MESSAGE.setItem(GameState.TLKManager.GetStringById(strRef).Value);
     const node = this.LB_MESSAGE.children[0];
     this.messageBoxHeight = node.textSize.y;
     this.LB_MESSAGE.extent.height = this.LB_MESSAGE.height = node.textSize.y;
@@ -132,8 +131,7 @@ export class InGameConfirm extends GameMenu {
     }
 
     this.LB_MESSAGE.extent.top = 0;
-    this.LB_MESSAGE.clearItems();
-    this.LB_MESSAGE.addItem(GameState.TLKManager.GetStringById(strRef).Value);
+    this.LB_MESSAGE.setItem(GameState.TLKManager.GetStringById(strRef).Value);
     const node = this.LB_MESSAGE.children[0];
     this.messageBoxHeight = node.textSize.y;
     this.LB_MESSAGE.extent.height = this.LB_MESSAGE.height = node.textSize.y;
@@ -151,11 +149,8 @@ export class InGameConfirm extends GameMenu {
 
   fromStringRef(strRef: number) {
     const tlkString = GameState.TLKManager.GetStringById(strRef);
-    if (!tlkString) {
-      return;
-    }
-    this.LB_MESSAGE.clearItems();
-    this.LB_MESSAGE.addItem(tlkString.Value);
+    if(!tlkString){ return; }
+    this.LB_MESSAGE.setItem(tlkString.Value);
     const node = this.LB_MESSAGE.children[0];
     this.messageBoxHeight = node.textSize.y;
     this.LB_MESSAGE.extent.height = this.LB_MESSAGE.height = this.messageBoxHeight;

@@ -910,10 +910,10 @@ export class UI3DRenderer extends EventListenerModel {
     }
     this.sceneGraphManager.rebuild();
   }
-
-  attachCamera(camera: THREE.PerspectiveCamera) {
-    camera.userData.heler = new THREE.CameraHelper(camera);
-    this.scene.add(camera.userData.heler);
+  
+  attachCamera(camera: THREE.PerspectiveCamera){
+    camera.userData.heler = new THREE.CameraHelper( camera );
+    this.scene.add( camera.userData.heler );
     this.cameras.push(camera);
   }
 

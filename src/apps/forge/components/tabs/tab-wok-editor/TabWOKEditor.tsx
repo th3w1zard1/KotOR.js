@@ -12,18 +12,9 @@ import * as KotOR from '@/apps/forge/KotOR';
 import { SectionContainer } from '@/apps/forge/components/SectionContainer';
 import { Button, ButtonGroup, Form } from 'react-bootstrap';
 
-import { LayoutContainer } from '@/apps/forge/components/LayoutContainer/LayoutContainer';
-import { MenuItem } from '@/apps/forge/components/common/MenuBar';
-import { SectionContainer } from '@/apps/forge/components/SectionContainer';
-import { UI3DRendererView } from '@/apps/forge/components/UI3DRendererView';
-import { LayoutContainerProvider } from '@/apps/forge/context/LayoutContainerContext';
-import { useEffectOnce } from '@/apps/forge/helpers/UseEffectOnce';
-import { BaseTabProps } from '@/apps/forge/interfaces/BaseTabProps';
-import * as KotOR from '@/apps/forge/KotOR';
-import { TabWOKEditorControlMode, TabWOKEditorState } from '@/apps/forge/states/tabs';
-import { CameraView } from '@/apps/forge/UI3DRenderer';
+import "@/apps/forge/components/tabs/tab-wok-editor/TabWOKEditor.scss";
 
-export const TabWOKEditor = function (props: BaseTabProps) {
+export const TabWOKEditor = function(props: BaseTabProps) {
   const tab: TabWOKEditorState = props.tab as TabWOKEditorState;
   const [walkmesh, setWalkmesh] = useState<KotOR.OdysseyWalkMesh>();
   const [wireframeVisible, setWireframeVisible] = useState(() => tab.wireframeVisible);
@@ -56,8 +47,7 @@ export const TabWOKEditor = function (props: BaseTabProps) {
     setHasSelectedFace(face != null);
   };
 
-  useEffectOnce(() => {
-    //constructor
+  useEffectOnce( () => { //constructor
     tab.addEventListener('onEditorFileLoad', onEditorFileLoad);
     tab.addEventListener('onUndoApplied', onUndoRedoApplied);
     tab.addEventListener('onRedoApplied', onUndoRedoApplied);
@@ -65,8 +55,7 @@ export const TabWOKEditor = function (props: BaseTabProps) {
     tab.addEventListener('onEdgeNormalHelpersVisibilityChange', onEdgeNormalHelpersVisibilityChange);
     tab.addEventListener('onFaceNormalHelpersVisibilityChange', onFaceNormalHelpersVisibilityChange);
     tab.addEventListener('onFaceSelected', onFaceSelectedForMenu);
-    return () => {
-      //destructor
+    return () => { //destructor
       tab.removeEventListener('onEditorFileLoad', onEditorFileLoad);
       tab.removeEventListener('onUndoApplied', onUndoRedoApplied);
       tab.removeEventListener('onRedoApplied', onUndoRedoApplied);

@@ -37,8 +37,8 @@ const NWCompileDataTypes: Record<string, number> = {
   string: 0x05,
   object: 0x06,
   struct: 0x12,
-  vector: 0x0a, // you use 'V' elsewhere; parser just needs unary to exist
-  action: 0x0e,
+  vector: 0x07,
+  action: 0x0E,
 };
 
 // Error shape compatible with NWScriptParser error console consumption
@@ -198,6 +198,26 @@ export class NWScriptASTBuilder {
 
     const isConst = this.is('keyword', 'CONST');
     if (isConst) this.next();
+
+    // `struct Pt p` inside a block — file-level STRUCT only handled in parseStructDeclOrVar().
+    if (this.is("keyword", "STRUCT")) {
+      this.next();
+      const typeNameTok = this.expectNameToken();
+      if (this.is("punct", "{")) {
+        throw new NWScriptASTBuilderError(
+          "Parse error: struct definitions are not allowed inside a function body",
+          this.tok,
+        );
+      }
+      const structDatatype: DataTypeNode = {
+        type: "datatype",
+        value: typeNameTok.value,
+        unary: NWCompileDataTypes.struct,
+        struct: typeNameTok.value,
+      };
+      const varNameTok = this.expectNameToken();
+      return this.finishVariableDecl(isConst, structDatatype, varNameTok.value, varNameTok);
+    }
 
     const dataType = this.tryParseDataType();
     if (dataType) {
@@ -587,14 +607,27 @@ export class NWScriptASTBuilder {
     const cases: CaseNode[] = [];
     let def: DefaultNode | null = null;
 
-    while (!this.is('punct', '}')) {
-      if (this.is('keyword', 'CASE')) {
-        const ckw = this.expect('keyword', 'CASE');
+    while (!this.is("punct", "}")) {
+      if (this.ignoreComments) {
+        this.skipComments();
+      }
+      if (this.is("punct", "}")) {
+        break;
+      }
+
+      if (this.is("keyword", "CASE")) {
+        const ckw = this.expect("keyword", "CASE");
         const caseValue = this.parseExpression(0);
         this.expect('punct', ':');
 
         const statements: StatementNode[] = [];
-        while (!this.is('keyword', 'CASE') && !this.is('keyword', 'DEFAULT') && !this.is('punct', '}')) {
+        while (true) {
+          if (this.ignoreComments) {
+            this.skipComments();
+          }
+          if (this.is("keyword", "CASE") || this.is("keyword", "DEFAULT") || this.is("punct", "}")) {
+            break;
+          }
           const st = this.parseDeclOrStatement();
           if (st) statements.push(st);
         }
@@ -608,7 +641,13 @@ export class NWScriptASTBuilder {
         this.expect('punct', ':');
 
         const statements: StatementNode[] = [];
-        while (!this.is('keyword', 'CASE') && !this.is('punct', '}')) {
+        while (true) {
+          if (this.ignoreComments) {
+            this.skipComments();
+          }
+          if (this.is("keyword", "CASE") || this.is("punct", "}")) {
+            break;
+          }
           const st = this.parseDeclOrStatement();
           if (st) statements.push(st);
         }

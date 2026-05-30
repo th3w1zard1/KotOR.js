@@ -1,72 +1,6 @@
-import { NWScriptASTBuilder } from '@/nwscript/compiler/NWScriptASTBuilder';
-import {
-  ArgumentNode,
-  ArrayLiteralNode,
-  AssignNode,
-  BinaryOpNode,
-  BlockNode,
-  BreakNode,
-  CallNode,
-  CaseNode,
-  CompareNode,
-  DataTypeNode,
-  DefaultNode,
-  DoWhileNode,
-  ElseIfNode,
-  ElseNode,
-  ExpressionNode,
-  ForNode,
-  FunctionCallNode,
-  FunctionNode,
-  IfNode,
-  IncDecNode,
-  IndexNode,
-  LiteralNode,
-  ProgramNode,
-  ReturnNode,
-  SourceInfo,
-  StructNode,
-  StructPropertyNode,
-  SwitchNode,
-  UnaryNode,
-  VariableListNode,
-  VariableNode,
-  VariableReferenceNode,
-  WhileNode,
-} from '@/nwscript/compiler/ASTTypes';
-import {
-  SemanticProgramNode,
-  SemanticVariableNode,
-  SemanticStructPropertyNode,
-  SemanticStructNode,
-  SemanticArgumentNode,
-  SemanticFunctionNode,
-  SemanticStatementNode,
-  SemanticBlockNode,
-  SemanticFunctionCallNode,
-  SemanticExpressionNode,
-  SemanticPropertyNode,
-  SemanticVariableReferenceNode,
-  SemanticVariableListNode,
-  SemanticLiteralNode,
-  SemanticArrayLiteralNode,
-  SemanticReturnNode,
-  SemanticIfNode,
-  SemanticElseIfNode,
-  SemanticElseNode,
-  SemanticWhileNode,
-  SemanticDoWhileNode,
-  SemanticForNode,
-  SemanticSwitchNode,
-  SemanticCaseNode,
-  SemanticDefaultNode,
-  SemanticBreakNode,
-  SemanticCompareNode,
-  SemanticAssignNode,
-  SemanticBinaryNode,
-  SemanticUnaryNode,
-  SemanticIncDecNode,
-} from '@/nwscript/compiler/ASTSemanticTypes';
+import { NWScriptASTBuilder } from "@/nwscript/compiler/NWScriptASTBuilder";
+import { ArgumentNode, ArrayLiteralNode, AssignNode, BinaryOpNode, BlockNode, BreakNode, CallNode, CaseNode, CompareNode, ContinueNode, DataTypeNode, DefaultNode, DoWhileNode, ElseIfNode, ElseNode, ExpressionNode, ForNode, FunctionCallNode, FunctionNode, IfNode, IncDecNode, IndexNode, LiteralNode, ProgramNode, ReturnNode, SourceInfo, StructNode, StructPropertyNode, SwitchNode, UnaryNode, VariableListNode, VariableNode, VariableReferenceNode, WhileNode } from "@/nwscript/compiler/ASTTypes";
+import { SemanticProgramNode, SemanticVariableNode, SemanticStructPropertyNode, SemanticStructNode, SemanticArgumentNode, SemanticFunctionNode, SemanticStatementNode, SemanticBlockNode, SemanticFunctionCallNode, SemanticExpressionNode, SemanticPropertyNode, SemanticVariableReferenceNode, SemanticVariableListNode, SemanticLiteralNode, SemanticArrayLiteralNode, SemanticReturnNode, SemanticIfNode, SemanticElseIfNode, SemanticElseNode, SemanticWhileNode, SemanticDoWhileNode, SemanticForNode, SemanticSwitchNode, SemanticCaseNode, SemanticDefaultNode, SemanticBreakNode, SemanticContinueNode, SemanticCompareNode, SemanticAssignNode, SemanticBinaryNode, SemanticUnaryNode, SemanticIncDecNode } from "@/nwscript/compiler/ASTSemanticTypes";
 
 const NWEngineTypeUnaryTypeOffset = 0x10;
 const NWEngineTypeBinaryTypeOffset = 0x30;
@@ -564,29 +498,44 @@ export class NWScriptParser {
     );
   }
 
-  getValueDataType(value: any): any {
-    try {
-      if (value && typeof value == 'object') {
-        if (value.type == 'literal') return value.datatype?.value;
-        if (value.type == 'property') return value.property_reference?.datatype?.value;
-        if (value.type == 'variable') {
+  /** Three literal floats in `[ … ]` are a vector initializer. */
+  private isTripleFloatLiteralArrayLiteral( value: any ): boolean {
+    if(!value || value.type !== 'array_literal' || !Array.isArray(value.elements)) return false;
+    if(value.elements.length !== 3) return false;
+    return value.elements.every((el: any) => el?.type === 'literal' && el.datatype?.value === 'float');
+  }
+
+  getValueDataType( value: any ): any {
+    try{
+      if(value && typeof value == 'object'){
+        if(value.type == 'literal') return value.datatype?.value;
+        if(value.type == 'array_literal' && this.isTripleFloatLiteralArrayLiteral(value))
+          return 'vector';
+        if(value.type == 'property') return value.property_reference?.datatype?.value;
+        if(value.type == 'variable') { 
           return value.datatype?.value || value?.variable_reference?.datatype?.value;
         }
         if (value.type == 'assign') return this.getValueDataType(value.right);
         if (value.type == 'variable_reference') {
           return value.datatype?.value || value?.variable_reference?.datatype?.value;
         }
-        if (value.type == 'argument') return value.datatype?.value;
-        if (value.type == 'function_call') return value.function_reference?.returntype?.value;
-        if (value.type == 'add') return this.getValueDataType(value.left);
-        if (value.type == 'sub') return this.getValueDataType(value.left);
-        if (value.type == 'mul') return this.getValueDataType(value.left);
-        if (value.type == 'div') return this.getValueDataType(value.left);
-        if (value.type == 'compare') return value.datatype?.value;
-        if (value.type == 'not') return this.getValueDataType(value.value);
-        if (value.type == 'neg') return this.getValueDataType(value.value);
-        if (value.type == 'inc') return this.getValueDataType(value.value);
-        if (value.type == 'dec') return this.getValueDataType(value.value);
+        if(value.type == 'argument') return value.datatype?.value;
+        if(value.type == 'function_call') return value.function_reference?.returntype?.value;
+        if(value.type == 'add') return this.getValueDataType(value.left);
+        if(value.type == 'sub') return this.getValueDataType(value.left);
+        if(value.type == 'mul') return this.getValueDataType(value.left);
+        if(value.type == 'div') return this.getValueDataType(value.left);
+        if(value.type == 'mod') return this.getValueDataType(value.left);
+        if(value.type == 'xor') return this.getValueDataType(value.left);
+        if(value.type == 'incor') return this.getValueDataType(value.left);
+        if(value.type == 'booland') return this.getValueDataType(value.left);
+        if(value.type == 'shift') return this.getValueDataType(value.left);
+        if(value.type == 'compare') return value.datatype?.value;
+        if(value.type == 'not') return this.getValueDataType(value.value);
+        if(value.type == 'neg') return this.getValueDataType(value.value);
+        if(value.type == 'comp') return this.getValueDataType(value.value);
+        if(value.type == 'inc') return this.getValueDataType(value.value);
+        if(value.type == 'dec') return this.getValueDataType(value.value);
       }
     } catch (e) {
       return 'NULL';
@@ -594,29 +543,33 @@ export class NWScriptParser {
     return undefined;
   }
 
-  getValueDataTypeUnary(value: any): any {
-    try {
-      if (value && typeof value == 'object') {
-        if (value.type == 'literal') return value.datatype?.unary;
-        if (value.type == 'property') return value.property_reference?.datatype?.unary;
-        if (value.type == 'variable') {
-          return value.datatype?.unary || value?.variable_reference?.datatype?.unary;
-        }
-        if (value.type == 'assign') return this.getValueDataTypeUnary(value.right);
-        if (value.type == 'variable_reference') {
-          return value.datatype?.unary || value?.variable_reference?.datatype?.unary;
-        }
-        if (value.type == 'argument') return value.datatype?.unary;
-        if (value.type == 'function_call') return value.function_reference?.returntype?.unary;
-        if (value.type == 'add') return this.getValueDataTypeUnary(value.left);
-        if (value.type == 'sub') return this.getValueDataTypeUnary(value.left);
-        if (value.type == 'mul') return this.getValueDataTypeUnary(value.left);
-        if (value.type == 'div') return this.getValueDataTypeUnary(value.left);
-        if (value.type == 'compare') return value.datatype?.unary;
-        if (value.type == 'not') return this.getValueDataTypeUnary(value.value);
-        if (value.type == 'neg') return this.getValueDataTypeUnary(value.value);
-        if (value.type == 'inc') return this.getValueDataTypeUnary(value.value);
-        if (value.type == 'dec') return this.getValueDataTypeUnary(value.value);
+  getValueDataTypeUnary( value: any ): any{
+    try{
+      if(value && typeof value == 'object'){
+        if(value.type == 'literal') return value.datatype?.unary;
+        if(value.type == 'array_literal' && this.isTripleFloatLiteralArrayLiteral(value))
+          return 0x07;
+        if(value.type == 'property') return value.property_reference?.datatype?.unary;
+        if(value.type == 'variable') { return value.datatype?.unary || value?.variable_reference?.datatype?.unary; }
+        if(value.type == 'assign') return this.getValueDataTypeUnary(value.right);
+        if(value.type == 'variable_reference') { return value.datatype?.unary || value?.variable_reference?.datatype?.unary; }
+        if(value.type == 'argument') return value.datatype?.unary;
+        if(value.type == 'function_call') return value.function_reference?.returntype?.unary;
+        if(value.type == 'add') return this.getValueDataTypeUnary(value.left);
+        if(value.type == 'sub') return this.getValueDataTypeUnary(value.left);
+        if(value.type == 'mul') return this.getValueDataTypeUnary(value.left);
+        if(value.type == 'div') return this.getValueDataTypeUnary(value.left);
+        if(value.type == 'mod') return this.getValueDataTypeUnary(value.left);
+        if(value.type == 'xor') return this.getValueDataTypeUnary(value.left);
+        if(value.type == 'incor') return this.getValueDataTypeUnary(value.left);
+        if(value.type == 'booland') return this.getValueDataTypeUnary(value.left);
+        if(value.type == 'shift') return this.getValueDataTypeUnary(value.left);
+        if(value.type == 'compare') return value.datatype?.unary;
+        if(value.type == 'not') return this.getValueDataTypeUnary(value.value);
+        if(value.type == 'neg') return this.getValueDataTypeUnary(value.value);
+        if(value.type == 'comp') return this.getValueDataTypeUnary(value.value);
+        if(value.type == 'inc') return this.getValueDataTypeUnary(value.value);
+        if(value.type == 'dec') return this.getValueDataTypeUnary(value.value);
       }
     } catch (e) {
       return 'NULL';
@@ -719,7 +672,9 @@ export class NWScriptParser {
       if (function_header) {
         global_functions[i].arguments = function_header.arguments;
       }
-      global_functions[i] = this.postProcessFunctionDefinition(global_functions[i]) as FunctionNode;
+      const fnDefn = this.postProcessFunctionDefinition(global_functions[i]);
+      fnDefn.declarationOrder = i;
+      global_functions[i] = fnDefn;
     }
     this.program.functions = global_functions as SemanticFunctionNode[];
 
@@ -1378,9 +1333,16 @@ export class NWScriptParser {
     return semanticNode;
   }
 
-  parseCompareNode(statement: CompareNode): SemanticCompareNode {
-    if (!statement || typeof statement !== 'object' || statement.type !== 'compare') {
-      this.throwError('Invalid compare node', statement, statement);
+  parseContinueNode( statement: ContinueNode ): SemanticContinueNode {
+    if(!statement || (typeof statement !== 'object') || statement.type !== 'continue'){
+      this.throwError("Invalid continue node", statement, statement);
+    }
+    return Object.assign({}, statement) as SemanticContinueNode;
+  }
+
+  parseCompareNode( statement: CompareNode ): SemanticCompareNode {
+    if(!statement || (typeof statement !== 'object') || statement.type !== 'compare'){
+      this.throwError("Invalid compare node", statement, statement);
     }
     const semanticNode = Object.assign({}, statement) as SemanticCompareNode;
     if (!!semanticNode.left && typeof semanticNode.left == 'object') {
@@ -1591,20 +1553,9 @@ export class NWScriptParser {
     return semanticNode;
   }
 
-  parseArithmeticNode(statement: BinaryOpNode): any {
-    if (
-      !statement ||
-      typeof statement !== 'object' ||
-      (statement.type !== 'add' &&
-        statement.type !== 'sub' &&
-        statement.type !== 'mul' &&
-        statement.type !== 'div' &&
-        statement.type !== 'mod' &&
-        statement.type !== 'incor' &&
-        statement.type !== 'booland' &&
-        statement.type !== 'xor')
-    ) {
-      this.throwError('Invalid arithmetic node', statement, statement);
+  parseArithmeticNode( statement: BinaryOpNode ): any {
+    if(!statement || (typeof statement !== 'object') || (statement.type !== 'add' && statement.type !== 'sub' && statement.type !== 'mul' && statement.type !== 'div' && statement.type !== 'mod' && statement.type !== 'incor' && statement.type !== 'booland' && statement.type !== 'xor' && statement.type !== 'shift')){
+      this.throwError("Invalid arithmetic node", statement, statement);
     }
     const semanticNode = Object.assign({}, statement) as SemanticBinaryNode;
     if (!!semanticNode.left && typeof semanticNode.left == 'object') {
@@ -1692,6 +1643,12 @@ export class NWScriptParser {
           semanticNode,
           semanticNode.right
         );
+      }
+    }else if(semanticNode.type == 'shift'){
+      if(    !(left_type == 'int'    && right_type == 'int')
+        )
+      {
+        this.throwError(`Can't shift types of [${left_type}] and [${right_type}] together`, semanticNode, semanticNode.right);
       }
     }
     return semanticNode;
@@ -1804,6 +1761,8 @@ export class NWScriptParser {
         return this.parseDefaultNode(statement);
       case 'break':
         return this.parseBreakNode(statement);
+      case 'continue':
+        return this.parseContinueNode(statement);
       case 'compare':
         return this.parseCompareNode(statement);
       case 'assign':
@@ -1816,6 +1775,7 @@ export class NWScriptParser {
       case 'incor':
       case 'booland':
       case 'xor':
+      case 'shift':
         return this.parseArithmeticNode(statement);
       case 'not':
       case 'neg':

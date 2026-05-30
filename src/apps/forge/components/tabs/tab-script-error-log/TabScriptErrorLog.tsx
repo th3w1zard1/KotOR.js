@@ -2,7 +2,9 @@ import * as monacoEditor from 'monaco-editor/esm/vs/editor/editor.api';
 import { useEffectOnce } from '@/apps/forge/helpers/UseEffectOnce';
 import { TabScriptErrorLogState, TabTextEditorState } from '@/apps/forge/states/tabs';
 
-export const TabScriptErrorLog = function (props: any) {
+import "@/apps/forge/components/tabs/tab-script-error-log/TabScriptErrorLog.scss";
+
+export const TabScriptErrorLog = function(props: any){
   const tab: TabScriptErrorLogState = props.tab;
   const parentTab: TabTextEditorState = props.parentTab;
 

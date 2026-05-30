@@ -1,12 +1,12 @@
-import { MenuSaveLoadMode } from '@/enums/gui/MenuSaveLoadMode';
-import { GameState } from '@/GameState';
-import { GameMenu, ListRowRegistry } from '@/gui';
-import { GUISaveGameItem } from '@/game/kotor/gui/GUISaveGameItem';
-import type { GUIListBox, GUILabel, GUIButton } from '@/gui';
-import { TextureLoader } from '@/loaders';
-import { Module } from '@/module';
-import { OdysseyTexture } from '@/three/odyssey/OdysseyTexture';
-import { SaveGame } from '@/engine/SaveGame';
+import { MenuSaveLoadMode } from "@/enums/gui/MenuSaveLoadMode";
+import { GameState } from "@/GameState";
+import { GameMenu, ListRowRegistry } from "@/gui";
+import { GUISaveGameItem } from "@/game/kotor/gui/GUISaveGameItem";
+import type { GUIListBox, GUILabel, GUIButton } from "@/gui";
+import { TextureLoader } from "@/loaders";
+import { Module } from "@/module";
+import { OdysseyTexture } from "@/three/odyssey/OdysseyTexture";
+import { SaveGame } from "@/engine/SaveGame";
 
 /**
  * MenuSaveLoad class.
@@ -63,7 +63,7 @@ export class MenuSaveLoad extends GameMenu {
 
       // LIST
       this.LB_GAMES.setProtoBuilder(GUISaveGameItem);
-      ListRowRegistry.register('kotor.MenuSaveLoad.LB_GAMES', GUISaveGameItem);
+      ListRowRegistry.register("kotor.MenuSaveLoad.LB_GAMES", GUISaveGameItem);
       this.LB_GAMES.onSelected = (save: SaveGame) => {
         this.selected = save;
         this.UpdateSelected();
@@ -115,16 +115,11 @@ export class MenuSaveLoad extends GameMenu {
     return saves;
   }
 
-  reloadSaves() {
-    this.LB_GAMES.clearItems();
-    let saves = this.getSaveGames();
-    for (let i = 0; i < saves.length; i++) {
-      let save = saves[i];
-      this.LB_GAMES.addItem(save);
-    }
+  reloadSaves(){
+    const saves = this.getSaveGames();
+    this.LB_GAMES.setItems(saves, { selectIndex: 0 } as any);
     this.selected = saves[0];
     this.UpdateSelected();
-    this.LB_GAMES.updateList();
   }
 
   protected activateSelectedSave() {

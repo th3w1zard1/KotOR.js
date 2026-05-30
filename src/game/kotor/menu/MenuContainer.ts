@@ -46,8 +46,8 @@ export class MenuContainer extends GameMenu {
     return new Promise<void>((resolve, reject) => {
       this.BTN_CANCEL.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.LB_ITEMS.clearItems();
-        if (this.container instanceof GameState.Module.ModuleArea.ModulePlaceable) {
+        this.LB_ITEMS.setItems([]);
+        if(this.container instanceof GameState.Module.ModuleArea.ModulePlaceable){
           this.container.close(GameState.PartyManager.party[0]);
         }
         this.close();
@@ -57,12 +57,12 @@ export class MenuContainer extends GameMenu {
       this.BTN_OK.addEventListener('click', (e) => {
         e.stopPropagation();
         const selectedItem = this.selectedItem;
-        if (!selectedItem) {
+        if(!selectedItem){
           return;
         }
-        if (this.mode == MenuContainerMode.TAKE_ITEMS) {
-          this.LB_ITEMS.clearItems();
-          if (this.container instanceof GameState.Module.ModuleArea.ModulePlaceable) {
+        if(this.mode == MenuContainerMode.TAKE_ITEMS){
+          this.LB_ITEMS.setItems([]);
+          if(this.container instanceof GameState.Module.ModuleArea.ModulePlaceable){
             this.container.retrieveInventory();
             this.container.close(GameState.PartyManager.party[0]);
           } else if (this.container instanceof GameState.Module.ModuleArea.ModuleCreature) {
@@ -70,8 +70,8 @@ export class MenuContainer extends GameMenu {
             //this.container.close(Game.player);
           }
           this.close();
-        } else {
-          if (selectedItem.getStackSize() <= 0) {
+        }else{
+          if(selectedItem.getStackSize() <= 0){
             return;
           }
           const willRemoveFromInventory = selectedItem.getStackSize() <= 1;
@@ -79,12 +79,12 @@ export class MenuContainer extends GameMenu {
           const newItem = selectedItem.clone();
           newItem.setStackSize(1);
           this.container.addItem(newItem);
-          if (willRemoveFromInventory) {
+          if(willRemoveFromInventory){
             this.LB_ITEMS.removeItemByNode(selectedItem);
             return;
           }
           const control = this.LB_ITEMS.getListElementByNode(selectedItem);
-          if (control) {
+          if(control){
             control.needsUpdate = true;
           }
         }
@@ -107,7 +107,7 @@ export class MenuContainer extends GameMenu {
 
       this.LB_ITEMS.onSelected = (item: ModuleItem) => {
         this.selectedItem = item;
-      };
+      }
 
       resolve();
     });
@@ -135,14 +135,14 @@ export class MenuContainer extends GameMenu {
     this.setMode(MenuContainerMode.TAKE_ITEMS);
   }
 
-  getSelectedContainer() {
+  getSelectedContainer(){
     return this.mode == MenuContainerMode.TAKE_ITEMS ? this.container : GameState.InventoryManager;
   }
 
-  setMode(mode: MenuContainerMode) {
+  setMode(mode: MenuContainerMode){
     this.mode = mode;
     this.selectedItem = null;
-    switch (this.mode) {
+    switch(this.mode){
       case MenuContainerMode.TAKE_ITEMS:
         this.LBL_MESSAGE.setText(GameState.TLKManager.GetStringById(STR_CONTAINER_INVENTORY).Value);
         this.BTN_OK.setText(GameState.TLKManager.GetStringById(STR_GET_ITEMS).Value);
@@ -165,18 +165,14 @@ export class MenuContainer extends GameMenu {
 
     //Update list items
     this.LB_ITEMS.setProtoBuilder(GUIInventoryItem);
-    this.LB_ITEMS.clearItems();
     if (typeof this.getSelectedContainer()?.inventory === 'object') {
       const inventory = this.getSelectedContainer().inventory;
-      for (let i = 0; i < inventory.length; i++) {
-        const item = inventory[i];
-        this.LB_ITEMS.addItem(item);
-        if (!this.selectedItem) {
-          this.selectedItem = item;
-        }
+      if (!this.selectedItem && inventory.length > 0) {
+        this.selectedItem = inventory[0];
       }
-      TextureLoader.LoadQueue();
-      this.LB_ITEMS.selectItem(this.selectedItem);
+      this.LB_ITEMS.setItems(inventory, { selectIndex: inventory.indexOf(this.selectedItem) } as any);
+    } else {
+      this.LB_ITEMS.setItems([]);
     }
   }
 }

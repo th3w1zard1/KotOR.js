@@ -20,19 +20,19 @@ import { ModuleDoorAnimState } from '@/enums/module/ModuleDoorAnimState';
 import { ModuleDoorOpenState } from '@/enums/module/ModuleDoorOpenState';
 import { ModuleDoorInteractSide } from '@/enums/module/ModuleDoorInteractSide';
 // import { AppearanceManager, InventoryManager, MenuManager, ModuleObjectManager, PartyManager, TwoDAManager, FactionManager } from "@/managers";
-import { MDLLoader, ResourceLoader } from '@/loaders';
-import { EngineMode } from '@/enums/engine/EngineMode';
-import { DLGObject } from '@/resource/DLGObject';
-import { ITwoDAAnimation } from '@/interface/twoDA/ITwoDAAnimation';
-import { SWDoorAppearance } from '@/engine/rules/SWDoorAppearance';
-import { AudioEngine } from '@/audio/AudioEngine';
-import { ModuleObjectType } from '@/enums/module/ModuleObjectType';
-import { BitWise } from '@/utility/BitWise';
-import { AudioEmitterType } from '@/enums/audio/AudioEmitterType';
-import { GameEffectFactory } from '@/effects/GameEffectFactory';
-import { CombatActionType, ModulePlaceableObjectSound, SkillType } from '@/enums';
-0.3;
-import { ModuleObjectScript } from '@/enums/module/ModuleObjectScript';
+import { MDLLoader, ResourceLoader } from "@/loaders";
+import { EngineMode } from "@/enums/engine/EngineMode";
+import { DLGObject } from "@/resource/DLGObject";
+import { ITwoDAAnimation } from "@/interface/twoDA/ITwoDAAnimation";
+import { SWDoorAppearance } from "@/engine/rules/SWDoorAppearance";
+import { AudioEngine } from "@/audio/AudioEngine";
+import { ModuleObjectType } from "@/enums/module/ModuleObjectType";
+import { BitWise } from "@/utility/BitWise";
+import { AudioEmitterType } from "@/enums/audio/AudioEmitterType";
+import { AudioPriorityGroup } from "@/enums/audio/AudioPriorityGroup";
+import { GameEffectFactory } from "@/effects/GameEffectFactory";
+import { CombatActionType, ModulePlaceableObjectSound, SkillType } from "@/enums";.3
+import { ModuleObjectScript } from "@/enums/module/ModuleObjectScript";
 
 interface AnimStateInfo {
   lastAnimState: ModuleDoorAnimState;
@@ -160,6 +160,7 @@ export class ModuleDoor extends ModuleObject {
       this.audioEmitter = new AudioEmitter(AudioEngine.GetAudioEngine());
       this.audioEmitter.maxDistance = 50;
       this.audioEmitter.type = AudioEmitterType.POSITIONAL;
+      this.audioEmitter.setPriorityGroupId(AudioPriorityGroup.ROOM_SOUNDS);
       this.audioEmitter.load();
     } catch (e) {
       console.error('AudioEmitter failed to create on object', e);

@@ -7,25 +7,26 @@ import { GameState } from '@/GameState';
 import { CExoLocString } from '@/resource/CExoLocString';
 import { GFFObject } from '@/resource/GFFObject';
 // import { NWScript } from "@/nwscript/NWScript";
-import { GFFField } from '@/resource/GFFField';
-import { GFFDataType } from '@/enums/resource/GFFDataType';
-import { ResourceTypes } from '@/resource/ResourceTypes';
-import { ERFObject } from '@/resource/ERFObject';
-import { CurrentGame } from '@/engine/CurrentGame';
-import { RIMObject } from '@/resource/RIMObject';
-import { GFFStruct } from '@/resource/GFFStruct';
-import { GameEventFactory } from '@/events/GameEventFactory';
-import { ResourceLoader, TextureLoader } from '@/loaders';
-import { AudioEngine } from '@/audio/AudioEngine';
-import { AudioEmitterType } from '@/enums/audio/AudioEmitterType';
-import { IModuleScripts } from '@/interface/module/IModuleScripts';
-import { IAreaListItem } from '@/interface/area/IAreaListItem';
-import type { GameEvent } from '@/events/GameEvent';
-import { ModuleArea } from '@/module/ModuleArea';
-import { ModuleTimeManager } from '@/module/ModuleTimeManager';
-import { ModuleObjectScript } from '@/enums/module/ModuleObjectScript';
-import type { NWScriptInstance } from '@/nwscript/NWScriptInstance';
-import { GameEngineType } from '@/enums/engine/GameEngineType';
+import { GFFField } from "@/resource/GFFField";
+import { GFFDataType } from "@/enums/resource/GFFDataType";
+import { ResourceTypes } from "@/resource/ResourceTypes";
+import { ERFObject } from "@/resource/ERFObject";
+import { CurrentGame } from "@/engine/CurrentGame";
+import { RIMObject } from "@/resource/RIMObject";
+import { GFFStruct } from "@/resource/GFFStruct";
+import { GameEventFactory } from "@/events/GameEventFactory";
+import { ResourceLoader, TextureLoader } from "@/loaders";
+import { AudioEngine } from "@/audio/AudioEngine";
+import { AudioEmitterType } from "@/enums/audio/AudioEmitterType";
+import { AudioPriorityGroup } from "@/enums/audio/AudioPriorityGroup";
+import { IModuleScripts } from "@/interface/module/IModuleScripts";
+import { IAreaListItem } from "@/interface/area/IAreaListItem";
+import type { GameEvent } from "@/events/GameEvent";
+import { ModuleArea } from "@/module/ModuleArea";
+import { ModuleTimeManager } from "@/module/ModuleTimeManager";
+import { ModuleObjectScript } from "@/enums/module/ModuleObjectScript";
+import type { NWScriptInstance } from "@/nwscript/NWScriptInstance";
+import { GameEngineType } from "@/enums/engine/GameEngineType";
 
 type ModuleScriptKeys =
   | 'Mod_OnAcquirItem'
@@ -80,6 +81,7 @@ export class Module {
   customTokens: Map<number, string>;
   transition: any;
   transWP: string;
+  lastItemAcquired: any = undefined;
 
   /**
    * List of Areas in the module
@@ -425,6 +427,7 @@ export class Module {
     object.audioEmitter = new AudioEmitter(AudioEngine.GetAudioEngine());
     object.audioEmitter.maxDistance = 50;
     object.audioEmitter.type = AudioEmitterType.POSITIONAL;
+    object.audioEmitter.setPriorityGroupId(AudioPriorityGroup.NORMAL_SPELL_EFFECTS);
     object.audioEmitter.load();
     object.audioEmitter.setPosition(lLocation.position.x, lLocation.position.y, lLocation.position.z);
 

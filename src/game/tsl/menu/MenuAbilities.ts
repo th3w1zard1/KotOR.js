@@ -219,9 +219,8 @@ export class MenuAbilities extends K1_MenuAbilities {
     this.LB_DESC.hide();
     this.LB_DESC_FEATS.hide();
 
-    this.LB_DESC.clearItems();
-    this.LB_DESC_FEATS.clearItems();
-    this.LB_ABILITY.clearItems();
+    this.LB_DESC.setItem(null);
+    this.LB_DESC_FEATS.setItem(null);
     const items = this.getFilteredItems();
 
     switch (this.filter) {
@@ -266,9 +265,7 @@ export class MenuAbilities extends K1_MenuAbilities {
     console.log(this.filter);
     console.log(this.LB_ABILITY.GUIProtoItemClass);
 
-    for (let i = 0; i < items.length; i++) {
-      this.LB_ABILITY.addItem(items[i]);
-    }
-    this.LB_ABILITY.updateList();
+    this.LB_ABILITY.setItems(items);
+
   }
 }

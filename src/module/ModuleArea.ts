@@ -951,8 +951,22 @@ export class ModuleArea extends ModuleObject {
       this.areaMap = AreaMap.FromStruct(mapStruct);
     }
 
-    if (this.are?.RootNode?.hasField('MiniGame')) {
-      this.miniGame = new ModuleMiniGame(this.are.getFieldByLabel('MiniGame')?.getChildStructs?.()?.[0]);
+    this.modListenCheck = this.are.getFieldByLabel('ModListenCheck').getValue();
+    this.modSpotCheck = this.are.getFieldByLabel('ModSpotCheck').getValue();
+    this.moon.ambientColor = this.are.getFieldByLabel('MoonAmbientColor').getValue();
+    this.moon.diffuseColor = this.are.getFieldByLabel('MoonDiffuseColor').getValue();
+    this.moon.fogColor = this.are.getFieldByLabel('MoonFogColor').getValue();
+    this.moon.fogFar = this.are.getFieldByLabel('MoonFogFar').getValue();
+    this.moon.fogNear = this.are.getFieldByLabel('MoonFogNear').getValue();
+    this.moon.fogOn = !!this.are.getFieldByLabel('MoonFogOn').getValue();
+    this.moon.shadows = !!this.are.getFieldByLabel('MoonShadows').getValue();
+    this.areaName = this.are.getFieldByLabel('Name').getCExoLocString();
+
+    this.noHangBack = !!this.are.getFieldByLabel('NoHangBack').getValue();
+    this.noRest = !!this.are.getFieldByLabel('NoRest').getValue();
+
+    if(this.are.RootNode.hasField(ModuleObjectScript.AreaOnEnter)){
+      this.scriptResRefs.set(ModuleObjectScript.AreaOnEnter, this.are.getFieldByLabel(ModuleObjectScript.AreaOnEnter).getValue());
     }
 
     this.modListenCheck = areVal('ModListenCheck', this.modListenCheck);
@@ -992,19 +1006,19 @@ export class ModuleArea extends ModuleObject {
     this.playerVsPlayer = areVal('PlayerVsPlayer', this.playerVsPlayer);
 
     //Rooms
-    if (rooms?.childStructs?.length) {
-      for (let i = 0; i < rooms.childStructs.length; i++) {
-        const strt = rooms.childStructs[i];
-        const fields = strt?.getFields?.();
-        const roomName = String(areStructVal('RoomName', fields, '')).toLowerCase();
-        const envAudio = areStructVal('EnvAudio', fields, 0);
-        const ambientScale = areStructVal('AmbientScale', fields, 1);
-        const room = new ModuleRoom(roomName, this);
-        room.area = this;
-        room.setAmbientScale(ambientScale);
-        room.setEnvAudio(envAudio);
-        this.rooms.push(room);
+    for(let i = 0; i < rooms.childStructs.length; i++ ){
+      let strt = rooms.childStructs[i];
+      const roomName = this.are.getFieldByLabel('RoomName', strt.getFields()).getValue().toLowerCase();
+      if(!roomName || roomName == '****'){
+        continue;
       }
+      const envAudio = this.are.getFieldByLabel('EnvAudio', strt.getFields()).getValue();
+      const ambientScale = this.are.getFieldByLabel('AmbientScale', strt.getFields()).getValue();
+      const room = new ModuleRoom(roomName, this);
+      room.area = this;
+      room.setAmbientScale(ambientScale);
+      room.setEnvAudio(envAudio);
+      this.rooms.push(room);
     }
 
     this.shadowOpacity = areVal('ShadowOpacity', this.shadowOpacity);
@@ -1255,7 +1269,10 @@ export class ModuleArea extends ModuleObject {
       let sortedRooms = [];
       for (let i = 0; i < this.layout.rooms.length; i++) {
         let roomLYT = this.layout.rooms[i];
-        for (let r = 0; r != this.rooms.length; r++) {
+        if(!roomLYT.name || roomLYT.name == '****'){
+          continue;
+        }
+        for(let r = 0; r != this.rooms.length; r++ ){
           let room = this.rooms[r];
           if (room.roomName.toLowerCase() == roomLYT.name.toLowerCase()) {
             room.position.copy(roomLYT.position);

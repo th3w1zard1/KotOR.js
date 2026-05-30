@@ -120,14 +120,9 @@ export class MenuKeyboardMapping extends K1_MenuKeyboardMapping {
     this.selectedKey = undefined;
     this.selectedKeyControl = undefined;
     this.LST_EventList.clearSelection();
-    const actions = KeyMapper.ACTIONS_ALL.filter((action) => action.page == this.page && action.sortpos >= 0).sort(
-      (a, b) => {
-        return a.sortpos - b.sortpos;
-      }
-    );
-    this.LST_EventList.clearItems();
-    for (let i = 0; i < actions.length; i++) {
-      this.LST_EventList.addItem(actions[i]);
-    }
+    const actions = KeyMapper.ACTIONS_ALL.filter( action => action.page == this.page && action.sortpos >= 0 ).sort( (a, b) => {
+      return a.sortpos - b.sortpos;
+    });
+    this.LST_EventList.setItems(actions);
   }
 }

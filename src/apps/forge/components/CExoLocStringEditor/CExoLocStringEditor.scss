@@ -1,5 +1,4 @@
-@use "sass:color";
-@use "../../styles/variables" as *;
+@use "tokens" as *;
 
 .cexoloc-editor {
   margin-bottom: $spacing-md;

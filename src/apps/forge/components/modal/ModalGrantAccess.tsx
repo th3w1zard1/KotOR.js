@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { useEffectOnce } from '@/apps/forge/helpers/UseEffectOnce';
-import { ForgeState } from '@/apps/forge/states/ForgeState';
-import { useApp } from '@/apps/forge/context/AppContext';
-import GrantAccessInfo from '@/apps/common/components/grantAccess/GrantAccessInfo';
+import React, { useEffect, useState } from "react";
+import { useEffectOnce } from "@/apps/forge/helpers/UseEffectOnce";
+import { ForgeState } from "@/apps/forge/states/ForgeState";
+import { useApp } from "@/apps/forge/context/AppContext";
+import GrantAccessInfo from "@/apps/common/components/grantAccess/GrantAccessInfo";
 
 import * as KotOR from '@/apps/forge/KotOR';
 
@@ -27,6 +27,7 @@ export const ModalGrantAccess = function (props: ModalGrantAccessProps) {
     const handle = await KotOR.GameFileSystem.showRequestDirectoryDialog();
     if (handle) {
       KotOR.ApplicationProfile.directoryHandle = handle;
+      KotOR.ApplicationProfile.profile.directory_handle = handle;
       KotOR.ConfigClient.set(`Profiles.${KotOR.ApplicationProfile.profile.key}.directory_handle`, handle);
 
       ForgeState.VerifyGameDirectory(

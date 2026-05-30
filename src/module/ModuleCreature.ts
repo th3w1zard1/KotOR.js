@@ -33,30 +33,31 @@ import { ActionParameterType } from '@/enums/actions/ActionParameterType';
 import EngineLocation from '@/engine/EngineLocation';
 import { AttackResult } from '@/enums/combat/AttackResult';
 // import { ICombatAction } from "@/interface/combat/ICombatAction";
-import { DLGObject } from '@/resource/DLGObject';
-import { ITwoDAAnimation } from '@/interface/twoDA/ITwoDAAnimation';
-import { SWCreatureAppearance } from '@/engine/rules/SWCreatureAppearance';
-import { ICreatureAnimationState } from '@/interface/animation/ICreatureAnimationState';
-import { IOverlayAnimationState } from '@/interface/animation/IOverlayAnimationState';
-import { WeaponWield } from '@/enums/combat/WeaponWield';
-import { AutoPauseState } from '@/enums/engine/AutoPauseState';
-import { AudioEngine } from '@/audio/AudioEngine';
-import { ModuleObjectType } from '@/enums/module/ModuleObjectType';
-import { GameEffectDurationType } from '@/enums/effects/GameEffectDurationType';
-import { BitWise } from '@/utility/BitWise';
-import { ModuleObjectConstant } from '@/enums/module/ModuleObjectConstant';
-import { PerceptionType } from '@/enums/engine/PerceptionType';
-import { AudioEmitterType } from '@/enums/audio/AudioEmitterType';
-import { CombatActionType } from '@/enums/combat/CombatActionType';
-import { CombatRoundAction } from '@/combat';
-import { GameEffectFactory } from '@/effects/GameEffectFactory';
-import type { Action } from '@/actions/Action';
-import { ModuleTriggerType } from '@/enums/module/ModuleTriggerType';
-import { EngineDebugType } from '@/enums/engine/EngineDebugType';
-import { TextSprite3D } from '@/engine/TextSprite3D';
-import { UIIconTimerType } from '@/enums/engine/UIIconTimerType';
-import { ExperienceType } from '@/enums/engine/ExperienceType';
-import { ModuleObjectScript } from '@/enums/module/ModuleObjectScript';
+import { DLGObject } from "@/resource/DLGObject";
+import { ITwoDAAnimation } from "@/interface/twoDA/ITwoDAAnimation";
+import { SWCreatureAppearance } from "@/engine/rules/SWCreatureAppearance";
+import { ICreatureAnimationState } from "@/interface/animation/ICreatureAnimationState";
+import { IOverlayAnimationState } from "@/interface/animation/IOverlayAnimationState";
+import { WeaponWield } from "@/enums/combat/WeaponWield";
+import { AutoPauseState } from "@/enums/engine/AutoPauseState";
+import { AudioEngine } from "@/audio/AudioEngine";
+import { ModuleObjectType } from "@/enums/module/ModuleObjectType";
+import { GameEffectDurationType } from "@/enums/effects/GameEffectDurationType";
+import { BitWise } from "@/utility/BitWise";
+import { ModuleObjectConstant } from "@/enums/module/ModuleObjectConstant";
+import { PerceptionType } from "@/enums/engine/PerceptionType";
+import { AudioEmitterType } from "@/enums/audio/AudioEmitterType";
+import { AudioPriorityGroup } from "@/enums/audio/AudioPriorityGroup";
+import { CombatActionType } from "@/enums/combat/CombatActionType";
+import { CombatRoundAction } from "@/combat";
+import { GameEffectFactory } from "@/effects/GameEffectFactory";
+import type { Action } from "@/actions/Action";
+import { ModuleTriggerType } from "@/enums/module/ModuleTriggerType";
+import { EngineDebugType } from "@/enums/engine/EngineDebugType";
+import { TextSprite3D } from "@/engine/TextSprite3D";
+import { UIIconTimerType } from "@/enums/engine/UIIconTimerType";
+import { ExperienceType } from "@/enums/engine/ExperienceType";
+import { ModuleObjectScript } from "@/enums/module/ModuleObjectScript";
 
 /**
  * ModuleCreature class.
@@ -379,11 +380,13 @@ export class ModuleCreature extends ModuleObject {
       this.audioEmitter = new AudioEmitter(AudioEngine.GetAudioEngine());
       this.audioEmitter.maxDistance = 50;
       this.audioEmitter.type = AudioEmitterType.POSITIONAL;
+      this.audioEmitter.setPriorityGroupId(AudioPriorityGroup.COMBAT);
       this.audioEmitter.load();
 
       this.footstepEmitter = new AudioEmitter(AudioEngine.GetAudioEngine());
       this.footstepEmitter.maxDistance = 50;
       this.footstepEmitter.type = AudioEmitterType.POSITIONAL;
+      this.footstepEmitter.setPriorityGroupId(AudioPriorityGroup.MEDIUM_AND_SMALL_CREATURE_FOOTSTEPS);
       this.footstepEmitter.load();
     } catch (e) {
       console.error('AudioEmitter failed to create on object', e);
@@ -1866,10 +1869,37 @@ export class ModuleCreature extends ModuleObject {
     }
   }
 
-  playEvent(event: THREE.Event) {
+  private getFootstepPriorityGroup(): AudioPriorityGroup {
+    if(this === GameState.getCurrentPlayer()){
+      return AudioPriorityGroup.PLAYER_FOOTSTEPS;
+    }
+
+    // Simple creatures route to creature footstep groups.
+    if(this.isSimpleCreature()){
+      return AudioPriorityGroup.MEDIUM_AND_SMALL_CREATURE_FOOTSTEPS;
+    }
+
+    return AudioPriorityGroup.MEDIUM_AND_SMALL_CREATURE_FOOTSTEPS;
+  }
+
+  private getSoundSetPriorityGroup(): AudioPriorityGroup {
+    if(this === GameState.getCurrentPlayer()){
+      return AudioPriorityGroup.PLAYER_CHAT;
+    }
+
+    // Prefer creature vocal groups for non-humanoid simple creatures.
+    if(this.isSimpleCreature()){
+      return AudioPriorityGroup.MEDIUM_AND_SMALL_CREATURE_VOCALIZATIONS;
+    }
+
+    return AudioPriorityGroup.NON_PLAYER_CHAT;
+  }
+
+  playEvent(event: THREE.Event){
     this.audioEmitter.setPosition(this.position.x, this.position.y, this.position.z);
     this.footstepEmitter.setPosition(this.position.x, this.position.y, this.position.z);
-
+    this.footstepEmitter.setPriorityGroupId(this.getFootstepPriorityGroup());
+    
     const appearance = this.creatureAppearance;
     const rhSounds = this.equipment.RIGHTHAND?.weaponSound;
     const lhSounds = this.equipment.LEFTHAND?.weaponSound;
@@ -1922,7 +1952,8 @@ export class ModuleCreature extends ModuleObject {
       this.footstepEmitter.playSoundFireAndForget(footstepSoundResRef);
     }
 
-    if (rhWeaponSoundResRef) {
+    if(rhWeaponSoundResRef){
+      this.audioEmitter.setPriorityGroupId(AudioPriorityGroup.COMBAT);
       this.audioEmitter.playSoundFireAndForget(rhWeaponSoundResRef);
     }
   }
@@ -4045,9 +4076,26 @@ export class ModuleCreature extends ModuleObject {
     if (!(this.ssf instanceof SSFObject)) {
       return;
     }
-    const resref = this.ssf.GetSoundResRef(type).replace(/\0.*$/g, '');
-    if (resref != '') {
-      if (this.audioEmitter) this.audioEmitter.playSoundFireAndForget(resref);
+    const resref = this.ssf.GetSoundResRef(type).replace(/\0.*$/g,'');
+    if(resref != ''){
+      if(this.audioEmitter){
+        this.audioEmitter.setPriorityGroupId(this.getSoundSetPriorityGroup());
+        this.audioEmitter.playSoundFireAndForget(resref);
+      }
+    }
+  }
+
+  updateDestroyFade(delta: number = 0): void {
+    super.updateDestroyFade(delta);
+    if(this.noFadeOnDestroy || this.destroyed) return;
+    if(this.timeSinceDestroyStarted >= this.delayUntilFade){
+      const fadeElapsed = this.timeSinceDestroyStarted - this.delayUntilFade;
+      const opacity = Math.max(0, 1 - (fadeElapsed / ModuleObject.FADE_TIME));
+      Object.values(this.equipment).forEach(item => {
+        if(item && item.model instanceof OdysseyModel3D){
+          item.model.setOpacity(opacity);
+        }
+      });
     }
   }
 

@@ -62,7 +62,6 @@ export class LegalScreenManager {
       AudioEngine.Unmute(AudioEngineChannel.ALL);
       AudioEngine.Mute(AudioEngineChannel.MOVIE);
     }
-    GameState.renderer.render(this.scene, GameState.camera_gui);
   }
 
   static Dispose() {

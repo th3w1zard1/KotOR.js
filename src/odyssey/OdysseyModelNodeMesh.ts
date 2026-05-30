@@ -196,7 +196,7 @@ export class OdysseyModelNodeMesh extends OdysseyModelNode {
 
     this.MDXVertexOffset = this.odysseyModel.mdlReader.readUInt32();
     this.MDXVertexNormalsOffset = this.odysseyModel.mdlReader.readUInt32();
-    this.MDXVertexColorsOffset = this.odysseyModel.mdlReader.readUInt32();
+    this.MDXVertexColorsOffset = this.odysseyModel.mdlReader.readInt32();
     this.MDXUVOffset1 = this.odysseyModel.mdlReader.readInt32();
     this.MDXUVOffset2 = this.odysseyModel.mdlReader.readInt32();
     this.MDXUVOffset3 = this.odysseyModel.mdlReader.readInt32();
@@ -301,8 +301,8 @@ export class OdysseyModelNodeMesh extends OdysseyModelNode {
         );
       }
 
-      // Color
-      if (this.MDXDataBitmap & OdysseyModelMDXFlag.COLOR) {
+      // Vertex color: no MDX bitmap bit — slot offset != -1 (engine reads RGB only)
+      if (this.MDXVertexColorsOffset >= 0) {
         this.odysseyModel.mdxReader.position = basePosition + this.MDXVertexColorsOffset;
         this.colors.push(
           this.odysseyModel.mdxReader.readSingle(),
@@ -473,6 +473,17 @@ export class OdysseyModelNodeMesh extends OdysseyModelNode {
           this.faces[i].smoothingGroup = this.odysseyModel.mdlReader.readUInt32();
         }
       }
+
+      if (this.odysseyModel.modelHeader.smoothingGroupsInFile && this.faceArrayDefinition.count > 0) {
+        for (let i = 0; i < this.faceArrayDefinition.count; i++) {
+          this.faces[i].smoothingGroup = this.odysseyModel.mdlReader.readUInt32();
+        }
+      }
+    }
+
+    if (this.InvertedCountArrayDef?.count > 0) {
+      this.odysseyModel.mdlReader.seek(this.odysseyModel.fileHeader.modelDataOffset + this.InvertedCountArrayDef.offset);
+      this.meshInvertedCounter = this.odysseyModel.mdlReader.readUInt32();
     }
 
     if (this.InvertedCountArrayDef?.count > 0) {

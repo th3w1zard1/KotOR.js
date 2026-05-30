@@ -191,24 +191,28 @@ export class BIFObject {
     }
   }
 
+  #fd: any;
+
+  async getFileDescription(): Promise<any> {
+    if(this.#fd) return this.#fd;
+    this.#fd = await GameFileSystem.open(this.resourceDiskInfo.path, 'r');
+    return this.#fd;
+  }
+
+  async dispose(): Promise<void> {
+    if(this.#fd){
+      await GameFileSystem.close(this.#fd);
+      this.#fd = undefined;
+    }
+  }
+
   async getResourceBuffer(res?: IBIFResource): Promise<Uint8Array> {
-    if (!res) {
-      return new Uint8Array(0);
-    }
-    if (!res.size) {
-      return new Uint8Array(0);
-    }
+    if(!res || !res.size){ return new Uint8Array(0); }
 
-    if (this.inMemory && this.buffer instanceof Uint8Array) {
-      return this.buffer.slice(res.offset, res.offset + res.size);
-    }
-
-    try {
-      const fd = await GameFileSystem.open(this.resourceDiskInfo.path, 'r');
+    try{
+      const fd = await this.getFileDescription();
       const buffer = new Uint8Array(res.size);
       await GameFileSystem.read(fd, buffer, 0, buffer.length, res.offset);
-      await GameFileSystem.close(fd);
-
       return buffer;
     } catch (e) {
       return new Uint8Array(0);

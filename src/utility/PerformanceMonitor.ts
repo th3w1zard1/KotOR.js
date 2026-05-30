@@ -209,18 +209,18 @@ export class PerformanceMonitor {
    */
   static toString() {
     const events = Array.from(this.#events.values()).sort((a, b) => b.duration - a.duration);
-    return this.#formatEventTable(events, 'Performance Monitor');
+    return this.#formatEventTable(events, "Performance Monitor");
   }
 
   /**
    * Same table format as {@link PerformanceMonitor.toString}, but only events whose
    * name starts with `prefix`. Percentages are computed over this subset's total duration.
    */
-  static toStringPrefix(prefix: string) {
+  static toStringPrefix(prefix: string){
     const events = Array.from(this.#events.values())
       .filter((ev) => ev.name.startsWith(prefix))
       .sort((a, b) => b.duration - a.duration);
-    if (events.length === 0) {
+    if(events.length === 0){
       return `(no performance events matching prefix ${JSON.stringify(prefix)})`;
     }
     const title = `Performance Monitor (${prefix}*)`;
@@ -228,15 +228,13 @@ export class PerformanceMonitor {
   }
 
   /** Clears all recorded events (e.g. dev session reset). */
-  static clear() {
+  static clear(){
     this.#events.clear();
   }
 
   /** Renders the ASCII table for a list of events; percentages use `events` total only. */
   static #formatEventTable(events: PerformanceMonitorEvent[], title: string): string {
-    if (events.length === 0) {
-      return '(no performance events)';
-    }
+    if(events.length === 0){ return "(no performance events)"; }
 
     const total = events.reduce((sum, ev) => sum + (ev.duration || 0), 0);
     const nameWidth = Math.max(10, ...events.map((e) => e.name.length));
@@ -245,8 +243,8 @@ export class PerformanceMonitor {
     const { ANSI } = this;
 
     const header = `${ANSI.cyan}${ANSI.bold}${title}${ANSI.reset}`;
-    const columns = `${ANSI.dim}${'Name'.padEnd(nameWidth)}  Duration   %     Bar${ANSI.reset}`;
-    const divider = `${ANSI.gray}${'-'.repeat(nameWidth)}  --------  -----  ${'-'.repeat(barWidth)}${ANSI.reset}`;
+    const columns = `${ANSI.dim}${"Name".padEnd(nameWidth)}  Duration   %     Bar${ANSI.reset}`;
+    const divider = `${ANSI.gray}${"-".repeat(nameWidth)}  --------  -----  ${"-".repeat(barWidth)}${ANSI.reset}`;
 
     const lines = events.map((ev) => {
       const pct = total > 0 ? (ev.duration / total) * 100 : 0;

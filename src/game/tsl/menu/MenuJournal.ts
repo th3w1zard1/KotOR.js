@@ -53,7 +53,7 @@ export class MenuJournal extends K1_MenuJournal {
         this.close();
         this.manager.MenuMessages.open();
       });
-
+      
       this.LB_ITEMS.setProtoBuilder(GUIJournalItem);
       this.LB_ITEMS.onSelect = (node: any) => {
         console.log(node);

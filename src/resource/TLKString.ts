@@ -1,5 +1,3 @@
-import { BinaryReader } from '@/utility/binary/BinaryReader';
-
 /**
  * TLKString class.
  *
@@ -19,38 +17,17 @@ export interface TLKStringDBRow {
 }
 
 export class TLKString {
-  // public flags: number;
-  // public SoundResRef: string;
 
   constructor(
     public flags: number,
-    public SoundResRef: string,
+    public SoundResRef: any,
     public VolumeVariance: number,
     public PitchVariance: number,
     public StringOffset: number,
     public StringLength: number,
     public SoundLength: number,
-    public Value: string | undefined = undefined
-  ) {
-    // this.flags = flags;
-    // this.SoundResRef = SoundResRef;
-    // this.VolumeVariance = VolumeVariance;
-    // this.PitchVariance = PitchVariance;
-    // this.StringOffset = StringOffset;
-    // this.StringLength = StringLength;
-    // this.SoundLength = SoundLength;
-    // this.Value = Value;
-  }
-
-  GetValue(binary: BinaryReader, onReturn?: (value: string) => void) {
-    if (this.Value == null) {
-      const pos = binary.tell();
-      binary.seek(this.StringOffset);
-      this.Value = binary.readChars(this.StringLength).replace(/\0[\s\S]*$/g, '');
-      if (onReturn != null) onReturn(this.Value);
-      binary.seek(pos);
-    }
-  }
+    public Value: string = ''
+  ) {}
 
   ToDB(): TLKStringDBRow {
     return {
@@ -70,16 +47,7 @@ export class TLKString {
     this.Value = row.Value.replace(/\0[\s\S]*$/g, '');
   }
 
-  static FromDBObj(row: TLKStringDBRow): TLKString {
-    return new TLKString(
-      row.flags,
-      row.SoundResRef,
-      row.VolumeVariance,
-      row.PitchVariance,
-      0,
-      row.Value.length,
-      0,
-      row.Value
-    );
+  static FromDBObj(row: any) {
+    return new TLKString(row.flags, row.SoundResRef, row.VolumeVariance, row.PitchVariance, 0, row.Value.length, 0, row.Value);
   }
 }

@@ -170,26 +170,12 @@ export class AudioFile {
             ? this.header.dataSize
             : Math.max(0, this.reader.length() - dataOffset);
 
-        this.reader.seek(dataOffset);
-        const dataADPCM = this.reader.readBytes(dataSize);
-        const adpcm = new ADPCMDecoder(
-          {
-            sampleRate: this.header.sampleRate,
-            frameSize: this.header.frameSize,
-            channels: this.header.channels,
-          },
-          dataADPCM
-        );
-
-        const decompiled = this.buildWave(
-          {
-            sampleRate: this.header.sampleRate,
-            bytesPerSec: 176400,
-            bits: 16,
-            channels: this.header.channels,
-          },
-          adpcm.pcm
-        );
+        const decompiled = this.buildWave({
+          sampleRate: this.header.sampleRate,
+          bytesPerSec: 176400,
+          bits: 16,
+          channels: this.header.channels
+        }, new Uint8Array(adpcm.pcm.buffer));
 
         return decompiled;
       } else if (this.header.format == AudioFileWaveEncoding.PCM) {
@@ -307,7 +293,7 @@ export class AudioFile {
     return buffer;
   }
 
-  getExportableData() {
+  getExportableData(){
     if (!this.isProcessed && this.data instanceof Uint8Array && this.data.length > 0) {
       this.reader = new BinaryReader(this.data);
       this.processFile();
@@ -336,13 +322,13 @@ export class AudioFile {
             break;
           case AudioFileWaveEncoding.PCM:
             return this.reader.buffer;
-            break;
+          break;
           default:
             // Unknown / extended WAV codec — still export raw file bytes
             if (this.reader?.buffer?.length) {
               return new Uint8Array(this.reader.buffer);
             }
-            break;
+          break;
         }
         break;
       case AudioFileAudioType.MP3:

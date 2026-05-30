@@ -1,19 +1,20 @@
-import { ModuleObject } from '@/module/ModuleObject';
-import { GFFObject } from '@/resource/GFFObject';
-import * as THREE from 'three';
-import { OdysseyModel3D, OdysseyObject3D } from '@/three/odyssey';
-import { GameState } from '@/GameState';
-import { ResourceTypes } from '@/resource/ResourceTypes';
-import { GFFField } from '@/resource/GFFField';
-import { GFFDataType } from '@/enums/resource/GFFDataType';
-import { GFFStruct } from '@/resource/GFFStruct';
-import { ModuleTriggerType } from '@/enums/module/ModuleTriggerType';
-import { ConfigClient } from '@/utility/ConfigClient';
-import { MDLLoader, ResourceLoader } from '@/loaders';
-import { EngineMode } from '@/enums/engine/EngineMode';
-import { ModuleObjectType } from '@/enums/module/ModuleObjectType';
-import { ModuleDoorAnimState, SignalEventType } from '@/enums';
-import { ModuleObjectScript } from '@/enums/module/ModuleObjectScript';
+import { ModuleObject } from "@/module/ModuleObject";
+import { GFFObject } from "@/resource/GFFObject";
+import * as THREE from "three";
+import { OdysseyModel3D, OdysseyObject3D } from "@/three/odyssey";
+import { GameState } from "@/GameState";
+import { ResourceTypes } from "@/resource/ResourceTypes";
+import { GFFField } from "@/resource/GFFField";
+import { GFFDataType } from "@/enums/resource/GFFDataType";
+import { GFFStruct } from "@/resource/GFFStruct";
+import { ModuleTriggerType } from "@/enums/module/ModuleTriggerType";
+import { ConfigClient } from "@/utility/ConfigClient";
+import { MDLLoader, ResourceLoader } from "@/loaders";
+import { EngineMode } from "@/enums/engine/EngineMode";
+import { ModuleObjectType } from "@/enums/module/ModuleObjectType";
+import { ActionParameterType, ModuleDoorAnimState, ModuleObjectConstant, SignalEventType } from "@/enums";
+import { ModuleObjectScript } from "@/enums/module/ModuleObjectScript";
+
 
 const OBJECTS_INSIDE_UPDATE_THRESHOLD = 15; // 15 frame ticks
 
@@ -434,13 +435,39 @@ export class ModuleTrigger extends ModuleObject {
     }
   }
 
-  onEnter(object?: ModuleObject) {
-    if (!object) {
+  /**
+   * Action dialog object
+   * This is used to start a conversation with the trigger, Since the trigger is not a creature it cannot start a conversation itself
+   * @param target 
+   * @param dialogResRef 
+   * @param ignoreStartRange 
+   * @param bPrivate 
+   * @param nConvoType 
+   * @param clearable 
+   */
+  actionDialogObject( target: ModuleObject, dialogResRef = '', ignoreStartRange = true, bPrivate = 0, nConvoType = 1, clearable = false ){
+    const action = new GameState.ActionFactory.ActionDialogObject();
+    action.setParameter(0, ActionParameterType.DWORD, target.id);
+    action.setParameter(1, ActionParameterType.STRING, dialogResRef);
+    action.setParameter(2, ActionParameterType.INT, bPrivate ? 1 : 0);
+    action.setParameter(3, ActionParameterType.INT, nConvoType);
+    action.setParameter(4, ActionParameterType.INT, ignoreStartRange ? 1 : 0);
+    action.setParameter(5, ActionParameterType.DWORD, ModuleObjectConstant.OBJECT_INVALID);
+    action.clearable = clearable;
+    console.log('ModuleTrigger.actionDialogObject', action);
+    const player = GameState.getCurrentPlayer();
+    if(!player){
+      console.warn('ModuleTrigger.actionDialogObject: Player not found');
       return;
     }
-    log.info('ModuleTrigger.onEnter', this.type, this.getTag());
-    if (this.type == ModuleTriggerType.TRAP && !this.trapTriggered) {
-      if (object.isHostile(this)) {
+    player.actionQueue.add(action);
+  }
+
+  onEnter(object?: ModuleObject){
+    if(!object){ return; }
+    console.log('ModuleTrigger.onEnter', this.type,  this.getTag());
+    if(this.type == ModuleTriggerType.TRAP && !this.trapTriggered){
+      if(object.isHostile(this)){
         this.trapTriggered = true;
         log.info('ModuleTrigger.onEnter', 'Trap Triggered');
         const event = new GameState.GameEventFactory.EventSignalEvent();

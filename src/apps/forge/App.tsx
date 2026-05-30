@@ -1,24 +1,26 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import * as fs from 'fs';
-import * as nodePath from 'path';
-import TabManager from '@/apps/forge/components/tabs/TabManager';
-import { TabManagerProvider } from '@/apps/forge/context/TabManagerContext';
-import { ForgeState } from '@/apps/forge/states/ForgeState';
-import { MenuTop } from '@/apps/forge/components/MenuTop';
-import { LayoutContainerProvider } from '@/apps/forge/context/LayoutContainerContext';
-import { LayoutContainer } from '@/apps/forge/components/LayoutContainer/LayoutContainer';
-import ModalGrantAccess from '@/apps/forge/components/modal/ModalGrantAccess';
-import { ModalChangeGame } from '@/apps/forge/components/modal/ModalChangeGame';
-import { useEffectOnce } from '@/apps/forge/helpers/UseEffectOnce';
-import { useApp } from '@/apps/forge/context/AppContext';
-import { ModalManager } from '@/apps/forge/components/modal/ModalManager';
-import { LoadingScreen } from '@/apps/common/components/loadingScreen/LoadingScreen';
-import { CommandPalette } from '@/apps/forge/components/CommandPalette';
-import { FileTypeManager } from '@/apps/forge/FileTypeManager';
-import { ForgeFileSystem } from '@/apps/forge/ForgeFileSystem';
-import { pathParse } from '@/apps/forge/helpers/PathParse';
-import { EditorFileProtocol } from '@/apps/forge/enum/EditorFileProtocol';
-import * as KotOR from '@/KotOR';
+import React, { useState, useCallback, useRef } from "react";
+import * as fs from "fs";
+import * as nodePath from "path";
+import TabManager from "@/apps/forge/components/tabs/TabManager";
+import { TabManagerProvider } from "@/apps/forge/context/TabManagerContext";
+import { ForgeState } from "@/apps/forge/states/ForgeState";
+import { MenuTop } from "@/apps/forge/components/MenuTop";
+import { LayoutContainerProvider } from "@/apps/forge/context/LayoutContainerContext";
+import { LayoutContainer } from "@/apps/forge/components/LayoutContainer/LayoutContainer";
+import ModalGrantAccess from "@/apps/forge/components/modal/ModalGrantAccess";
+import { ModalChangeGame } from "@/apps/forge/components/modal/ModalChangeGame";
+import { useEffectOnce } from "@/apps/forge/helpers/UseEffectOnce";
+import { useApp } from "@/apps/forge/context/AppContext";
+import { ModalManager } from "@/apps/forge/components/modal/ModalManager";
+import { LoadingScreen } from "@/apps/common/components/loadingScreen/LoadingScreen";
+import { FileTypeManager } from "@/apps/forge/FileTypeManager";
+import { ForgeFileSystem } from "@/apps/forge/ForgeFileSystem";
+import { EditorFile } from "@/apps/forge/EditorFile";
+import { pathParse } from "@/apps/forge/helpers/PathParse";
+import { TabQuickStartState } from "@/apps/forge/states/tabs/TabQuickStartState";
+import { ForgeFloatingMiniPlayer } from "@/apps/forge/components/ForgeFloatingMiniPlayer";
+import forgeIcon from "@/assets/icons/icon.png";
+import * as KotOR from "@/KotOR";
 
 export const App = (props: any) => {
   const appContext = useApp();
@@ -28,9 +30,13 @@ export const App = (props: any) => {
   const [loadingScreenMessage] = appContext.loadingScreenMessage;
   const [loadingScreenBackgroundURL] = appContext.loadingScreenBackgroundURL;
   const [loadingScreenLogoURL] = appContext.loadingScreenLogoURL;
-  const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounter = useRef(0);
+  const isFileDragEvent = (e: React.DragEvent<HTMLDivElement>) => {
+    const types = e.dataTransfer?.types;
+    return !!types && Array.from(types).includes('Files');
+  };
+
 
   const onUserGrant = () => {
     setShowGrantModal(false);
@@ -78,18 +84,10 @@ export const App = (props: any) => {
     };
   });
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'p' || e.key === 'P')) {
-        e.preventDefault();
-        setShowCommandPalette(true);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
-
   const onDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    if (!isFileDragEvent(e)) {
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     dragCounter.current++;
@@ -99,6 +97,9 @@ export const App = (props: any) => {
   }, []);
 
   const onDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    if (!isFileDragEvent(e)) {
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     dragCounter.current--;
@@ -108,12 +109,18 @@ export const App = (props: any) => {
   }, []);
 
   const onDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    if (!isFileDragEvent(e)) {
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
-    e.dataTransfer.dropEffect = ('open' as any) || 'copy';
+    e.dataTransfer.dropEffect = 'copy';
   }, []);
 
   const onDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
+    if (!isFileDragEvent(e)) {
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     dragCounter.current = 0;
@@ -121,9 +128,9 @@ export const App = (props: any) => {
 
     if (KotOR.ApplicationProfile.ENV === KotOR.ApplicationEnvironment.ELECTRON) {
       const allFiles = Array.from(e.dataTransfer.files);
-      const mdlFiles = allFiles.filter((f) => pathParse(f.name).ext.toLowerCase() === 'mdl');
-      const mdxFiles = allFiles.filter((f) => pathParse(f.name).ext.toLowerCase() === 'mdx');
-      const otherFiles = allFiles.filter((f) => {
+      const mdlFiles = allFiles.filter(f => pathParse(f.name).ext.toLowerCase() === 'mdl');
+      const mdxFiles = allFiles.filter(f => pathParse(f.name).ext.toLowerCase() === 'mdx');
+      const otherFiles = allFiles.filter(f => {
         const ext = pathParse(f.name).ext.toLowerCase();
         return ext !== 'mdl' && ext !== 'mdx';
       });
@@ -146,9 +153,9 @@ export const App = (props: any) => {
         const filePath = (mdlFile as any).path as string;
 
         // Prefer a counterpart from the same drop batch
-        const batchMdx = mdxFiles.find(
-          (f) =>
-            pathParse(f.name).name.toLowerCase() === parsed.name.toLowerCase() && !pairedMdxPaths.has((f as any).path)
+        const batchMdx = mdxFiles.find(f =>
+          pathParse(f.name).name.toLowerCase() === parsed.name.toLowerCase() &&
+          !pairedMdxPaths.has((f as any).path)
         );
 
         let path2: string | undefined;
@@ -200,22 +207,23 @@ export const App = (props: any) => {
           });
         }
       }
+
     } else {
       // Browser: use FileSystemFileHandle via dataTransfer.items.
       // All getAsFileSystemHandle() calls must be initiated synchronously before
       // any await, because the browser clears the DataTransfer object on the
       // first yield back to the event loop.
-      const items = Array.from(e.dataTransfer.items).filter((item) => item.kind === 'file');
+      const items = Array.from(e.dataTransfer.items).filter(item => item.kind === 'file');
       const handlePromises = items
-        .filter((item) => 'getAsFileSystemHandle' in item)
-        .map((item) => (item as any).getAsFileSystemHandle() as Promise<FileSystemFileHandle>);
+        .filter(item => 'getAsFileSystemHandle' in item)
+        .map(item => (item as any).getAsFileSystemHandle() as Promise<FileSystemFileHandle>);
 
       const resolvedHandles = await Promise.all(handlePromises);
-      const handles = resolvedHandles.filter((h) => h && h.kind === 'file');
+      const handles = resolvedHandles.filter(h => h && h.kind === 'file');
 
-      const mdlHandles = handles.filter((h) => pathParse(h.name).ext.toLowerCase() === 'mdl');
-      const mdxHandles = handles.filter((h) => pathParse(h.name).ext.toLowerCase() === 'mdx');
-      const otherHandles = handles.filter((h) => {
+      const mdlHandles = handles.filter(h => pathParse(h.name).ext.toLowerCase() === 'mdl');
+      const mdxHandles = handles.filter(h => pathParse(h.name).ext.toLowerCase() === 'mdx');
+      const otherHandles = handles.filter(h => {
         const ext = pathParse(h.name).ext.toLowerCase();
         return ext !== 'mdl' && ext !== 'mdx';
       });
@@ -223,7 +231,7 @@ export const App = (props: any) => {
       for (const handle of otherHandles) {
         const parsed = pathParse(handle.name);
         FileTypeManager.onOpenFile({
-          path: `${EditorFileProtocol.FILE}//system.dir/${handle.name}`,
+          path: EditorFile.referenceURIForSystemVirtualName(handle.name),
           handle: handle,
           filename: handle.name,
           resref: parsed.name,
@@ -237,15 +245,16 @@ export const App = (props: any) => {
         const parsed = pathParse(mdlHandle.name);
 
         // Prefer a counterpart from the same drop batch
-        const batchMdx = mdxHandles.find(
-          (h) => pathParse(h.name).name.toLowerCase() === parsed.name.toLowerCase() && !pairedMdxHandles.has(h)
+        const batchMdx = mdxHandles.find(h =>
+          pathParse(h.name).name.toLowerCase() === parsed.name.toLowerCase() &&
+          !pairedMdxHandles.has(h)
         );
 
         if (batchMdx) {
           pairedMdxHandles.add(batchMdx);
           FileTypeManager.onOpenFile({
-            path: `${EditorFileProtocol.FILE}//system.dir/${mdlHandle.name}`,
-            path2: `${EditorFileProtocol.FILE}//system.dir/${batchMdx.name}`,
+            path: EditorFile.referenceURIForSystemVirtualName(mdlHandle.name),
+            path2: EditorFile.referenceURIForSystemVirtualName(batchMdx.name),
             handle: mdlHandle,
             handle2: batchMdx,
             filename: mdlHandle.name,
@@ -262,8 +271,8 @@ export const App = (props: any) => {
           if (Array.isArray(mdxResponse.handles) && mdxResponse.handles.length > 0) {
             const [mdxHandle] = mdxResponse.handles as FileSystemFileHandle[];
             FileTypeManager.onOpenFile({
-              path: `${EditorFileProtocol.FILE}//system.dir/${mdlHandle.name}`,
-              path2: `${EditorFileProtocol.FILE}//system.dir/${mdxHandle.name}`,
+              path: EditorFile.referenceURIForSystemVirtualName(mdlHandle.name),
+              path2: EditorFile.referenceURIForSystemVirtualName(mdxHandle.name),
               handle: mdlHandle,
               handle2: mdxHandle,
               filename: mdlHandle.name,
@@ -273,7 +282,7 @@ export const App = (props: any) => {
           } else {
             // User cancelled – open MDL alone
             FileTypeManager.onOpenFile({
-              path: `${EditorFileProtocol.FILE}//system.dir/${mdlHandle.name}`,
+              path: EditorFile.referenceURIForSystemVirtualName(mdlHandle.name),
               handle: mdlHandle,
               filename: mdlHandle.name,
               resref: parsed.name,
@@ -298,8 +307,8 @@ export const App = (props: any) => {
         if (Array.isArray(mdlResponse.handles) && mdlResponse.handles.length > 0) {
           const [mdlHandle] = mdlResponse.handles as FileSystemFileHandle[];
           FileTypeManager.onOpenFile({
-            path: `${EditorFileProtocol.FILE}//system.dir/${mdlHandle.name}`,
-            path2: `${EditorFileProtocol.FILE}//system.dir/${mdxHandle.name}`,
+            path: EditorFile.referenceURIForSystemVirtualName(mdlHandle.name),
+            path2: EditorFile.referenceURIForSystemVirtualName(mdxHandle.name),
             handle: mdlHandle,
             handle2: mdxHandle,
             filename: mdlHandle.name,
@@ -309,7 +318,7 @@ export const App = (props: any) => {
         } else {
           // User cancelled – open MDX alone
           FileTypeManager.onOpenFile({
-            path: `${EditorFileProtocol.FILE}//system.dir/${mdxHandle.name}`,
+            path: EditorFile.referenceURIForSystemVirtualName(mdxHandle.name),
             handle: mdxHandle,
             filename: mdxHandle.name,
             resref: parsed.name,
@@ -328,11 +337,26 @@ export const App = (props: any) => {
     </div>
   );
 
+  const renderMainTabsEmptyState = () => {
+    return (
+      <div className="tab-manager-empty-state">
+        <img className="tab-manager-empty-state__logo" src={forgeIcon} alt="Forge logo" />
+        <button
+          type="button"
+          className="tab-manager-empty-state__quick-start-btn"
+          onClick={() => ForgeState.tabManager.addTab(new TabQuickStartState())}
+        >
+          Open Start Page
+        </button>
+      </div>
+    );
+  };
+
   return (
     <>
       <div
         id="app"
-        style={{ opacity: appReady ? '1' : '0' }}
+        style={{ opacity: (appReady) ? '1': '0' }}
         onDragEnter={onDragEnter}
         onDragLeave={onDragLeave}
         onDragOver={onDragOver}
@@ -343,13 +367,13 @@ export const App = (props: any) => {
           <LayoutContainerProvider>
             <LayoutContainer westContent={westContent}>
               <TabManagerProvider manager={ForgeState.tabManager}>
-                <TabManager></TabManager>
+                <TabManager renderEmptyState={renderMainTabsEmptyState}></TabManager>
               </TabManagerProvider>
             </LayoutContainer>
           </LayoutContainerProvider>
         </div>
         <ModalChangeGame></ModalChangeGame>
-        <CommandPalette show={showCommandPalette} onHide={() => setShowCommandPalette(false)} />
+        <ForgeFloatingMiniPlayer />
         {isDragOver && (
           <div className="drag-drop-overlay">
             <div className="drag-drop-overlay__content">

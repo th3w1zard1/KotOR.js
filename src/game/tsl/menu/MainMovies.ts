@@ -79,16 +79,8 @@ export class MainMovies extends K1_MainMovies {
     if (skipInit) return;
     return new Promise<void>((resolve, reject) => {
       this.LB_MOVIES.protoItem.extent.height = 64;
-      this.LB_MOVIES.setTextColor(
-        this.LB_MOVIES.defaultColor.r,
-        this.LB_MOVIES.defaultColor.g,
-        this.LB_MOVIES.defaultColor.b
-      );
-      this.LB_MOVIES.protoItem.setTextColor(
-        this.LB_MOVIES.defaultColor.r,
-        this.LB_MOVIES.defaultColor.g,
-        this.LB_MOVIES.defaultColor.b
-      );
+      this.LB_MOVIES.setTextColor(this.LB_MOVIES.defaultColor.r, this.LB_MOVIES.defaultColor.g, this.LB_MOVIES.defaultColor.b);
+      this.LB_MOVIES.protoItem.setTextColor(this.LB_MOVIES.defaultColor.r, this.LB_MOVIES.defaultColor.g, this.LB_MOVIES.defaultColor.b);
       this.LB_MOVIES.onClicked = (movie: GUIMovieItemTsl, control: any, index: number) => {
         console.log(movie);
         this.selected = movie;
@@ -111,10 +103,7 @@ export class MainMovies extends K1_MainMovies {
       }
 
       this.movieList.sort((a, b) => a.order - b.order);
-      for (const movie of this.movieList) {
-        this.LB_MOVIES.addItem(new GUIMovieItemTsl(movie));
-      }
-      this.LB_MOVIES.updateList();
+      this.LB_MOVIES.setItems(this.movieList.map(m => new GUIMovieItemTsl(m)));
 
       this.LBL_UNLOCKED_VALUE.setText(`${this.movieList.length} / ${this.movieList.length}`);
 

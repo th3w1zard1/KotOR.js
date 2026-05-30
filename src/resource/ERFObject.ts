@@ -46,7 +46,10 @@ export class ERFObject {
   group: string = 'erf';
   type: string = 'erf';
 
-  constructor(file?: string | Uint8Array) {
+  private _resourceIndex: Map<string, IERFResource> = new Map();
+  #fd: any;
+
+  constructor(file?: string|Uint8Array){
     this.localizedStrings = [];
     this.keyList = [];
     this.resources = [];
@@ -185,6 +188,12 @@ export class ERFObject {
       this.resources.push(resource);
     }
     this.reader.dispose();
+
+    this._resourceIndex = new Map();
+    for(let i = 0; i < this.keyList.length; i++){
+      const key = this.keyList[i];
+      this._resourceIndex.set(`${key.resRef}:${key.resType}`, this.resources[key.resId]);
+    }
   }
 
   async loadFromDisk(): Promise<void> {
@@ -225,23 +234,25 @@ export class ERFObject {
     header = new Uint8Array(0);
   }
 
-  getResource(resRef: string, resType: number): IERFResource {
-    resRef = resRef.toLowerCase();
-    for (let i = 0; i < this.keyList.length; i++) {
-      let key = this.keyList[i];
-      if (key.resRef == resRef && key.resType == resType) {
-        return this.resources[key.resId];
-      }
+  getResourceInfo(resRef: string, resType: number): IERFResource {
+    return this._resourceIndex.get(`${resRef.toLowerCase()}:${resType}`);
+  }
+
+  async getFileDescription(): Promise<any> {
+    if(this.#fd) return this.#fd;
+    this.#fd = await GameFileSystem.open(this.resource_path, 'r');
+    return this.#fd;
+  }
+
+  async dispose(): Promise<void> {
+    if(this.#fd){
+      await GameFileSystem.close(this.#fd);
+      this.#fd = undefined;
     }
-    return undefined;
   }
 
   async getResourceBuffer(resource: IERFResource): Promise<Uint8Array> {
-    if (typeof resource == 'undefined') {
-      return new Uint8Array(0);
-    }
-
-    if (!resource.size) {
+    if(typeof resource == 'undefined' || !resource.size){
       return new Uint8Array(0);
     }
 
@@ -250,10 +261,9 @@ export class ERFObject {
     if (this.inMemory) {
       buffer.set(this.buffer.slice(resource.offset, resource.offset + resource.size));
       return buffer;
-    } else {
-      const fd = await GameFileSystem.open(this.resource_path, 'r');
+    }else{
+      const fd = await this.getFileDescription();
       await GameFileSystem.read(fd, buffer, 0, buffer.length, resource.offset);
-      await GameFileSystem.close(fd);
     }
 
     return buffer;

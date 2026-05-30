@@ -47,6 +47,9 @@ export class KEYObject {
   bifs: IBIFEntry[] = [];
   keys: IKEYEntry[] = [];
 
+  private _keyByResIdType: Map<string, IKEYEntry> = new Map();
+  private _keyByRefType: Map<string, IKEYEntry> = new Map();
+
   file: string = '';
   reader: BinaryReader;
   fileType: string = 'KEY ';
@@ -132,6 +135,14 @@ export class KEYObject {
         resId: this.reader.readUInt32() & KEY_V1_RESOURCE_ID_MASK,
       } as IKEYEntry;
     }
+
+    this._keyByResIdType = new Map();
+    this._keyByRefType = new Map();
+    for(let i = 0; i < this.keys.length; i++){
+      const key = this.keys[i];
+      this._keyByResIdType.set(`${key.resId}:${key.resType}`, key);
+      this._keyByRefType.set(`${key.resRef}:${key.resType}`, key);
+    }
   }
 
   async loadFile(file: string) {
@@ -149,24 +160,12 @@ export class KEYObject {
     return null;
   }
 
-  getFileKey(ResRef: string, ResType: number) {
-    for (let i = 0; i < this.keys.length; i++) {
-      const key = this.keys[i];
-      if (key.resRef == ResRef && key.resType == ResType) {
-        return key;
-      }
-    }
-    return null;
+  getFileKey(ResRef: string, ResType: number): IKEYEntry | null {
+    return this._keyByRefType.get(`${ResRef}:${ResType}`) ?? null;
   }
 
   getFileKeyByRes(Res: IBIFResource): IKEYEntry {
-    for (let i = 0; i < this.keys.length; i++) {
-      const key = this.keys[i];
-      if (key.resId == Res.Id && key.resType == Res.resType) {
-        return key;
-      }
-    }
-    return;
+    return this._keyByResIdType.get(`${Res.Id}:${Res.resType}`);
   }
 
   getFilesByResType(ResType: number) {

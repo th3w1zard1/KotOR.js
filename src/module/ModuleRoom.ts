@@ -240,7 +240,7 @@ export class ModuleRoom extends ModuleObject {
     //Add the walkmesh back to the scene
     if (this.collisionManager.walkmesh && !this.collisionManager.walkmesh.mesh.parent) {
       GameState.group.room_walkmeshes.add(this.collisionManager.walkmesh.mesh);
-    } else if (this.collisionManager.walkmesh && this.collisionManager.walkmesh.mesh.parent) {
+    }else if(this.collisionManager.walkmesh && this.collisionManager.walkmesh.mesh.parent){
       this.collisionManager.walkmesh.mesh.removeFromParent();
       GameState.group.room_walkmeshes.add(this.collisionManager.walkmesh.mesh);
     }
@@ -274,7 +274,7 @@ export class ModuleRoom extends ModuleObject {
     }
 
     //Remove the walkmesh back to the scene
-    if (this.collisionManager.walkmesh && this.collisionManager.walkmesh.mesh.parent) {
+    if(this.collisionManager.walkmesh && this.collisionManager.walkmesh.mesh.parent){
       this.collisionManager.walkmesh.mesh.removeFromParent();
     }
 
@@ -389,7 +389,7 @@ export class ModuleRoom extends ModuleObject {
     }
 
     const grassFaces = this.getGrassFaces(aabb);
-    if (!grassFaces.length) {
+    if(!grassFaces.length){
       // console.warn('ModuleRoom.buildGrass: No grass faces found for room', this.roomName);
       return;
     }
@@ -429,7 +429,7 @@ export class ModuleRoom extends ModuleObject {
           ambientColor: { value: new THREE.Color().setHex(parseInt('0x' + this.area.sun.fogColor.toString(16))) },
           windPower: { value: this.area.windPower },
           planeHeightJitter: { value: 0.05 },
-          playerPosition: { value: new THREE.Vector3() },
+          playerPosition: { value: new THREE.Vector3 },
           alphaTest: { value: this.area.alphaTest },
           probability: { value: grassProbability },
           // Fade distance uniforms
@@ -484,13 +484,13 @@ export class ModuleRoom extends ModuleObject {
     const pos = aabb.vertices;
     const uv2 = aabb.tvectors[1];
     const faceIndexByRef = new Map<OdysseyFace3, number>();
-    for (let i = 0; i < aabb.faces.length; i++) {
+    for(let i = 0; i < aabb.faces.length; i++){
       faceIndexByRef.set(aabb.faces[i], i);
     }
     const grassFaceIndexSet = new Set<number>();
-    for (let i = 0; i < grassFaces.length; i++) {
+    for(let i = 0; i < grassFaces.length; i++){
       const idx = faceIndexByRef.get(grassFaces[i]);
-      if (typeof idx === 'number') {
+      if(typeof idx === 'number'){
         grassFaceIndexSet.add(idx);
       }
     }
@@ -500,7 +500,7 @@ export class ModuleRoom extends ModuleObject {
     let instanceIndex = 0;
 
     // Process each face
-    for (let k = 0; k < grassFaces.length; k++) {
+    for(let k = 0; k < grassFaces.length; k++){
       const face = grassFaces[k];
       const grassCount = faceData.faceGrassCounts[k];
 
@@ -524,13 +524,13 @@ export class ModuleRoom extends ModuleObject {
       const blockedEdgeCA = this.isBlockedGrassEdge(face, 2, grassFaceIndexSet);
 
       // Generate grass instances for this face
-      for (let j = 0; j < grassCount; j++) {
+      for(let j = 0; j < grassCount; j++){
         let accepted = false;
         let a = 0;
         let b = 0;
         let c = 0;
 
-        for (let attempt = 0; attempt < maxPlacementAttempts; attempt++) {
+        for(let attempt = 0; attempt < maxPlacementAttempts; attempt++){
           // Generate random barycentric coordinates
           a = Math.random();
           b = Math.random();
@@ -543,20 +543,20 @@ export class ModuleRoom extends ModuleObject {
           c = 1 - a - b;
 
           // Calculate position
-          tmpVec3.x = a * FA.x + b * FB.x + c * FC.x;
-          tmpVec3.y = a * FA.y + b * FB.y + c * FC.y;
-          tmpVec3.z = a * FA.z + b * FB.z + c * FC.z;
+          tmpVec3.x = (a * FA.x) + (b * FB.x) + (c * FC.x);
+          tmpVec3.y = (a * FA.y) + (b * FB.y) + (c * FC.y);
+          tmpVec3.z = (a * FA.z) + (b * FB.z) + (c * FC.z);
 
           // Keep blades away from edges that border non-grass faces.
-          if (blockedEdgeAB && this.pointToSegmentDistance(tmpVec3, FA, FB) < edgePadding) continue;
-          if (blockedEdgeBC && this.pointToSegmentDistance(tmpVec3, FB, FC) < edgePadding) continue;
-          if (blockedEdgeCA && this.pointToSegmentDistance(tmpVec3, FC, FA) < edgePadding) continue;
+          if(blockedEdgeAB && this.pointToSegmentDistance(tmpVec3, FA, FB) < edgePadding) continue;
+          if(blockedEdgeBC && this.pointToSegmentDistance(tmpVec3, FB, FC) < edgePadding) continue;
+          if(blockedEdgeCA && this.pointToSegmentDistance(tmpVec3, FC, FA) < edgePadding) continue;
 
           accepted = true;
           break;
         }
 
-        if (!accepted) {
+        if(!accepted){
           continue;
         }
 
@@ -580,7 +580,7 @@ export class ModuleRoom extends ModuleObject {
         instanceIndex++;
       }
     }
-
+    
     this.grass.count = instanceIndex;
     this.grass.instanceMatrix.needsUpdate = true;
     geometry.setAttribute('instanceID', new THREE.InstancedBufferAttribute(instanceIndices, 1));
@@ -602,7 +602,7 @@ export class ModuleRoom extends ModuleObject {
 
   private isBlockedGrassEdge(face: OdysseyFace3, edgeIndex: number, grassFaceIndexSet: Set<number>): boolean {
     const adjacentFaceIndex = face.adjacent?.[edgeIndex];
-    if (typeof adjacentFaceIndex !== 'number' || adjacentFaceIndex < 0) {
+    if(typeof adjacentFaceIndex !== 'number' || adjacentFaceIndex < 0){
       return true;
     }
     return !grassFaceIndexSet.has(adjacentFaceIndex);
@@ -616,7 +616,7 @@ export class ModuleRoom extends ModuleObject {
     this._edgeTmp.subVectors(segB, segA);
     this._pointTmp.subVectors(point, segA);
     const edgeLenSq = this._edgeTmp.lengthSq();
-    if (edgeLenSq <= 0) {
+    if(edgeLenSq <= 0){
       return point.distanceTo(segA);
     }
     const t = Math.max(0, Math.min(1, this._pointTmp.dot(this._edgeTmp) / edgeLenSq));
@@ -634,7 +634,7 @@ export class ModuleRoom extends ModuleObject {
     probability.w = Math.max(0, probability.w);
 
     let total = probability.x + probability.y + probability.z + probability.w;
-    if (total <= 0) {
+    if(total <= 0){
       probability.set(0.25, 0.25, 0.25, 0.25);
       return;
     }
@@ -676,17 +676,16 @@ export class ModuleRoom extends ModuleObject {
   /**
    * Pre-calculate face data and grass counts
    */
-  private precalculateFaceData(
-    aabb: OdysseyModelNodeAABB,
-    grassFaces: OdysseyFace3[],
-    density: number
-  ): { totalGrassCount: number; faceGrassCounts: number[] } {
+  private precalculateFaceData(aabb: OdysseyModelNodeAABB, grassFaces: OdysseyFace3[], density: number): { totalGrassCount: number, faceGrassCounts: number[] } {
     const faceGrassCounts: number[] = [];
     let totalGrassCount = 0;
 
     const FA = new THREE.Vector3();
     const FB = new THREE.Vector3();
     const FC = new THREE.Vector3();
+    
+    for(let i = 0; i < grassFaces.length; i++){
+      const face = grassFaces[i];
 
     for (let i = 0; i < grassFaces.length; i++) {
       const face = grassFaces[i];

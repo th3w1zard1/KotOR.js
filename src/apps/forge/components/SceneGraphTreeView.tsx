@@ -1,8 +1,8 @@
-import React, { useState, useCallback, memo, useMemo, useEffect, CSSProperties } from 'react';
-import { SceneGraphNode, SceneGraphNodeEventListenerTypes } from '@/apps/forge/SceneGraphNode';
-import { SceneGraphTreeViewManager } from '@/apps/forge/managers/SceneGraphTreeViewManager';
-import { ForgeTreeView } from '@/apps/forge/components/treeview/ForgeTreeView';
-import { ListItemNode } from '@/apps/forge/components/treeview/ListItemNode';
+import React, { useState, useCallback, memo, useMemo, useEffect, CSSProperties } from "react";
+import { SceneGraphNode, SceneGraphNodeEventListenerTypes } from "@/apps/forge/SceneGraphNode";
+import { SceneGraphTreeViewManager } from "@/apps/forge/managers/SceneGraphTreeViewManager";
+import { ForgeTreeView } from "@/apps/forge/components/treeview/ForgeTreeView";
+import { ListItemNode } from "@/apps/forge/components/treeview/ListItemNode";
 
 export interface SceneGraphTreeViewProps {
   manager: SceneGraphTreeViewManager;
@@ -28,13 +28,17 @@ export const SceneGraphTreeView = function (props: SceneGraphTreeViewProps) {
     setNodes([...(manager.parentNodes ?? [])]);
     return () => {
       manager.removeEventListener('onBuild', onBuild);
-    };
+    }
   }, [manager, onBuild]);
   return (
-    <ForgeTreeView style={listStyle ?? { height: '350px', overflow: 'auto' }}>
-      {nodes.map((node: SceneGraphNode) => {
-        return <SceneGraphTreeViewNode manager={manager} key={node.id} node={node} />;
-      })}
+    <ForgeTreeView style={listStyle ?? { height: '350px', overflow: 'auto'}}>
+    {
+      nodes.map( (node: SceneGraphNode) => {
+        return (
+          <SceneGraphTreeViewNode manager={manager} key={node.id} node={node} />
+        )
+      })
+    }
     </ForgeTreeView>
   );
 };
@@ -64,12 +68,12 @@ export const SceneGraphTreeViewNode = memo(function SceneGraphTreeViewNode(props
     setIsSelected(node.selected);
   }, [node]);
 
-  useEffect(() => {
+  useEffect( () => {
     // Initialize state from current node.nodes
     setNodes([...node.nodes]);
     setOpenState(node.open);
     setIsSelected(node.selected);
-
+    
     node.addEventListener<SceneGraphNodeEventListenerTypes>('onNameChange', onNameChange);
     node.addEventListener<SceneGraphNodeEventListenerTypes>('onExpandStateChange', onExpandStateChange);
     node.addEventListener<SceneGraphNodeEventListenerTypes>('onNodesChange', onNodesChange);
@@ -79,7 +83,7 @@ export const SceneGraphTreeViewNode = memo(function SceneGraphTreeViewNode(props
       node.removeEventListener<SceneGraphNodeEventListenerTypes>('onExpandStateChange', onExpandStateChange);
       node.removeEventListener<SceneGraphNodeEventListenerTypes>('onNodesChange', onNodesChange);
       node.removeEventListener<SceneGraphNodeEventListenerTypes>('onSelectStateChange', onSelectStateChange);
-    };
+    }
   }, [node, onNameChange, onExpandStateChange, onNodesChange, onSelectStateChange]);
 
   const handleClick = useCallback(() => {

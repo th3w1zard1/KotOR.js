@@ -34,9 +34,8 @@ class AudioChannel {
 
   setGain(value: number) {
     this.#gain = value;
-    if (this.muted) {
-      return;
-    }
+    this.#gainCached = this.#gain;
+    if(this.muted){ return; }
     this.#gainNode.gain.value = value;
   }
 
@@ -49,7 +48,6 @@ class AudioChannel {
       return;
     }
     this.muted = true;
-    this.#gainCached = this.#gain;
     this.#gainNode.gain.value = 0;
     this.getGainNode().disconnect();
   }
@@ -222,8 +220,6 @@ export class AudioEngine {
     this.battleMusicAudioEmitter.setDestination(AudioEngine.musicChannel.getGainNode());
     this.battleStingerAudioEmitter.setDestination(AudioEngine.musicChannel.getGainNode());
     this.dialogMusicAudioEmitter.setDestination(AudioEngine.musicChannel.getGainNode());
-
-    this.ambientAudioDayEmitter.setVolume(0.5);
 
     this.areaMusicDayAudioEmitter.addEventListener('play', () => {
       this.bgmMode = BackgroundMusicMode.AREA;
