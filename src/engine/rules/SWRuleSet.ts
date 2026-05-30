@@ -143,8 +143,6 @@ export class SWRuleSet {
     return SWRuleSet.priorityGroups[0];
   }
 
-  static Init(){
-
   static Init() {
     /**
      * Initialize Base Items

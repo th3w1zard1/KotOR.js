@@ -166,8 +166,6 @@ export class NWScriptCompiler {
 
   private static readonly REL32_SENTINEL = 0x7fffffff;
 
-  constructor(ast: CompilerProgramNode){
-
   constructor(ast: CompilerProgramNode) {
     this.program = ast;
     this.scopes = [];

@@ -300,14 +300,6 @@ export class GUIScrollBar extends GUIControl {
           ? this.list.getViewportInnerHeight()
           : this.list.extent.height;
 
-    if(this.list){
-
-      const contentHeight = this.list.getContentHeight();
-      const vh =
-        typeof this.list.getViewportInnerHeight === 'function'
-          ? this.list.getViewportInnerHeight()
-          : this.list.extent.height;
-
       let scaleY = contentHeight > 0 ? vh / contentHeight : 1;
       if(scaleY > 1){
         scaleY = 1;

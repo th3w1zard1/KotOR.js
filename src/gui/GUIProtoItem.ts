@@ -11,15 +11,6 @@ import { Mouse } from '@/controls/Mouse';
 // build a normalized unit rect, scale to extent
 const points = [
   new THREE.Vector3(-0.5, -0.5, 0),
-  new THREE.Vector3(0.5, -0.5, 0),
-  new THREE.Vector3(0.5, 0.5, 0),
-  new THREE.Vector3(-0.5, 0.5, 0),
-  new THREE.Vector3(-0.5, -0.5, 0), // close loop
-];
-
-// build a normalized unit rect, scale to extent
-const points = [
-  new THREE.Vector3(-0.5, -0.5, 0),
   new THREE.Vector3( 0.5, -0.5, 0),
   new THREE.Vector3( 0.5,  0.5, 0),
   new THREE.Vector3(-0.5,  0.5, 0),
@@ -39,10 +30,6 @@ export class GUIProtoItem extends GUIControl {
   static debugExtentLine: THREE.Line;
   static debugGeom = new THREE.BufferGeometry().setFromPoints(points);
   static debugMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff, depthTest: false });
-
-  static debugExtentLine: THREE.Line;
-  static debugGeom = new THREE.BufferGeometry().setFromPoints(points);
-  static debugMaterial  = new THREE.LineBasicMaterial({ color: 0x00ffff, depthTest: false });
 
   constructor(menu: GameMenu, control: GFFStruct, parent: GUIControl, scale: boolean = false){
     super(menu, control, parent, scale);

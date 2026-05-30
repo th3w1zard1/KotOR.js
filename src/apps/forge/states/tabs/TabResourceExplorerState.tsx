@@ -403,37 +403,31 @@ export class TabResourceExplorerState extends TabState {
 
           const files = (rim as any)?.keyList ? (rim as any).keyList : (rim.resources as any);
 
-						subTypes[resource.resType].addChildNode(new FileBrowserNode({
-							name: `${resRef}.${KotOR.ResourceTypes.getKeyByValue(resource.resType)}`,
-							type: 'resource',
-							data: {
-								path: EditorFile.referenceURIForArchiveResource(
-                  rim instanceof KotOR.RIMObject ? 'rim' : 'erf',
-                  rim.resource_path,
-                  resRef,
-                  KotOR.ResourceTypes.getKeyByValue(resource.resType) as string,
-                ),
-							}
-						}));
-					}
+          for (let i = 0; i < files.length; i++) {
+            const resource = files[i];
+            const resRef = resource.resRef;
 
             if (subTypes[resource.resType] == undefined) {
               subTypes[resource.resType] = new FileBrowserNode({
                 name: KotOR.ResourceTypes.getKeyByValue(resource.resType),
                 type: 'group',
+                canOrphan: true,
               });
               node.addChildNode(subTypes[resource.resType]);
             }
 
-            subTypes[resource.resType].addChildNode(
-              new FileBrowserNode({
-                name: `${resRef}.${KotOR.ResourceTypes.getKeyByValue(resource.resType)}`,
-                type: 'resource',
-                data: {
-                  path: `${rim instanceof KotOR.RIMObject ? EditorFileProtocol.RIM : EditorFileProtocol.ERF}//game.dir/${rim.resource_path}?resref=${resRef}&restype=${KotOR.ResourceTypes.getKeyByValue(resource.resType)}`,
-                },
-              })
-            );
+            subTypes[resource.resType].addChildNode(new FileBrowserNode({
+              name: `${resRef}.${KotOR.ResourceTypes.getKeyByValue(resource.resType)}`,
+              type: 'resource',
+              data: {
+                path: EditorFile.referenceURIForArchiveResource(
+                  rim instanceof KotOR.RIMObject ? 'rim' : 'erf',
+                  rim.resource_path,
+                  resRef,
+                  KotOR.ResourceTypes.getKeyByValue(resource.resType) as string,
+                ),
+              }
+            }));
           }
 
           asyncLoop.next();
@@ -570,15 +564,7 @@ export class TabResourceExplorerState extends TabState {
               targetFolder = targetFolder.nodes[index];
             }
           }
-          return KotOR.GameFileSystem.readdir(folder_name, { recursive: true });
-        })
-        .then((files: string[] | void) => {
-          if (!Array.isArray(files)) {
-            return;
-          }
-          (folder.nodes as any)._indexes = {};
-
-          targetFolder.addChildNode( 
+          targetFolder.addChildNode(
             new FileBrowserNode({
               name: newfile.trim(),
               type: 'resource',
@@ -586,43 +572,7 @@ export class TabResourceExplorerState extends TabState {
               nodes: [],
             })
           );
-
-            const newfile = parts.pop() || '';
-            let targetFolder = folder;
-
-            for (let i = 0; i < parts.length; i++) {
-              if (typeof (targetFolder.nodes as any)._indexes[parts[i]] === 'undefined') {
-                //Push the new folder and get the index
-                const index =
-                  targetFolder.addChildNode(
-                    new FileBrowserNode({
-                      name: parts[i].trim(),
-                      type: 'group',
-                      nodes: [],
-                    })
-                  ) - 1;
-                (targetFolder.nodes as any)._indexes[parts[i]] = index;
-                targetFolder = targetFolder.nodes[index];
-                (targetFolder.nodes as any)._indexes = {};
-              } else {
-                const index = (targetFolder.nodes as any)._indexes[parts[i]];
-                targetFolder = targetFolder.nodes[index];
-              }
-            }
-
-            targetFolder.addChildNode(
-              new FileBrowserNode({
-                name: newfile.trim(),
-                type: 'resource',
-                data: { path: `${EditorFileProtocol.FILE}//game.dir/${files[i]}` },
-                nodes: [],
-              })
-            );
-
-            /*targetFolder.nodeList.sort( (a, b) => {
-            return a.type == 'group' ? 0 : 1;
-          });*/
-          }
+        }
 
           folder.nodes.sort((a: any, b: any) => {
             const compareType = a.type == 'group' && b.type != 'group' ? -1 : 1;
@@ -645,72 +595,6 @@ export class TabResourceExplorerState extends TabState {
           }
           resolve(folder);
         });
-    });
-  }
-
-  static LoadSaves() {
-    return new Promise<FileBrowserNode>(async (resolve) => {
-      const savesRoot: FileBrowserNode = new FileBrowserNode({
-        name: 'Saves',
-        type: 'group',
-        nodes: [],
-        canOrphan: false,
-      });
-
-      try {
-        const files = await KotOR.GameFileSystem.readdir('Saves', { recursive: true });
-        const saveArchives = files.filter((filepath: string) => filepath.toLowerCase().endsWith('savegame.sav'));
-
-        for (const savePath of saveArchives) {
-          try {
-            const erf = new KotOR.ERFObject(savePath);
-            await erf.load();
-
-            const archiveNode = await TabResourceExplorerState.BuildArchiveBrowserNode(
-              erf,
-              savePath.split(path.sep).pop() || 'SAVEGAME.sav',
-              savePath,
-              undefined
-            );
-
-            // Keep save folder context for similarly named archive files.
-            if (archiveNode.nodes.length) {
-              const saveFolderName = path.dirname(savePath).split(path.sep).pop() || 'Save';
-              const saveFolderNode = new FileBrowserNode({
-                name: saveFolderName,
-                type: 'group',
-                nodes: [archiveNode],
-                canOrphan: false,
-              });
-              archiveNode.parent = saveFolderNode;
-              savesRoot.addChildNode(saveFolderNode);
-            }
-          } catch (e) {
-            console.error('LoadSaves: failed to load save archive', savePath, e);
-          }
-        }
-
-        folder.nodes.sort((a: any, b: any) => {
-          let compareType =
-            a.type == 'group' && b.type != 'group' ? -1 : 1;
-          let compareName = a.name.localeCompare(b.name);
-
-          return compareType || compareName;
-        });
-
-        resolve(folder);
-      }).catch( (err: any) => {
-        // Optional folders (e.g. StreamVoice on K1) may not exist in some installs.
-        // Keep explorer loading resilient and skip missing folders quietly.
-        const errMsg = String(err?.message || err || '');
-        const isMissingDir =
-          errMsg.toLowerCase().includes('failed to resolve directory inside game folder') ||
-          errMsg.toLowerCase().includes('failed to resolve file path directory handle');
-        if(!isMissingDir){
-          console.error(err);
-        }
-        resolve(folder)
-      }); 
     });
   }
 

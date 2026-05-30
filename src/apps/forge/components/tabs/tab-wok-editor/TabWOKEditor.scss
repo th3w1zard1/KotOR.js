@@ -21,7 +21,7 @@
   }
 
   .wok-prop-label {
-    color: wokv.$text-secondary;
+    color: $text-secondary;
     flex-shrink: 0;
   }
 
@@ -76,7 +76,7 @@
 
   .wok-hint {
     font-size: 0.85em;
-    color: wokv.$text-secondary;
+    color: $text-secondary;
     font-style: italic;
     padding: 4px 0;
   }

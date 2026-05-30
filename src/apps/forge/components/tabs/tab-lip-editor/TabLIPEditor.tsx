@@ -28,28 +28,17 @@ function formatLipClock(t: number): string {
   return `${m}:${sec}`;
 }
 
-import '@/apps/forge/components/tabs/tab-lip-editor/tab-lip-editor.scss';
+export const TabLIPEditor = function(props: BaseTabProps){
 
-function formatTimelineMmSs(totalSeconds: number): string {
-  const s = Math.floor(totalSeconds % 60);
-  const m = Math.floor(totalSeconds / 60);
-  return `${m}:${s < 10 ? '0' : ''}${s}`;
-}
-
-function formatLipClock(t: number): string {
-  if (!isFinite(t) || t < 0) t = 0;
-  const m = Math.floor(t / 60);
-  const s = t % 60;
-  const sec = s < 10 ? `0${s.toFixed(2)}` : s.toFixed(2);
-  return `${m}:${sec}`;
-}
-
-export const TabLIPEditor = function (props: BaseTabProps) {
   const tab: TabLIPEditorState = props.tab as TabLIPEditorState;
 
-  const southPanel = <UILIPKeyFramePanel tab={tab}></UILIPKeyFramePanel>;
+  const southPanel = (
+    <UILIPKeyFramePanel tab={tab}></UILIPKeyFramePanel>
+  );
 
-  const eastPanel = <UILIPUtilitiesControl tab={tab}></UILIPUtilitiesControl>;
+  const eastPanel = (
+    <UILIPUtilitiesControl tab={tab}></UILIPUtilitiesControl>
+  );
 
   useEffectOnce(() => {
     if(tab.file){
@@ -66,11 +55,7 @@ export const TabLIPEditor = function (props: BaseTabProps) {
         <UI3DRendererView context={tab.ui3DRenderer} />
       </LayoutContainer>
     </LayoutContainerProvider>
-  );
-};
-
-export interface UILIPKeyFramePanelProps {
-  tab: TabLIPEditorState;
+  )
 }
 
 export interface UILIPKeyFramePanelProps {
@@ -103,7 +88,7 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
   const [timedPhonemes, setTimedPhonemes] = useState<any[]>(() => tab.timed_phonemes?.items || []);
 
   const drawWaveform = () => {
-    if (waveformCanvasRef.current) {
+    if(waveformCanvasRef.current){
       const canvas = waveformCanvasRef.current;
       const ctx = canvas.getContext('2d');
       if(ctx){
@@ -164,15 +149,8 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
     drawWaveformRef.current();
   };
 
-  const onAudioLoad = (_state: TabLIPEditorState, buffer?: AudioBuffer) => {
-    setHasWaveformAudio(buffer instanceof AudioBuffer);
-    drawWaveformRef.current();
-  };
+  const onHeadLoad = () => {
 
-  const onHeadLoad = () => {};
-
-  const onPhonemesGenerated = (_state: TabLIPEditorState, result: any) => {
-    setTimedPhonemes(result?.items || []);
   };
 
   const onPhonemesGenerated = (_state: TabLIPEditorState, result: any) => {
@@ -187,11 +165,11 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
 
   const onPlay = () => {
     setPlaying(true);
-  };
+  }
 
   const onPause = () => {
     setPlaying(false);
-  };
+  }
 
   const onStop = () => {
     setPlaying(false);
@@ -204,11 +182,11 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
     setCanUndo(tab.canUndo);
     setCanRedo(tab.canRedo);
     rerender(!render);
-  };
+  }
 
   const onDurationChange = (duration: number) => {
     setDuration(duration);
-  };
+  }
 
   const syncUndoRedoState = () => {
     setCanUndo(tab.canUndo);
@@ -264,22 +242,22 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
 
   useEffect( () => {
     let _timelineScaleFactor = timelineScaleFactor;
-
-    if (zoom < 250) {
+  
+    if(zoom < 250){
       _timelineScaleFactor = 30;
     }
-
-    if (zoom <= 150) {
+  
+    if(zoom <= 150){
       _timelineScaleFactor = 60;
     }
     setTimelineScaleFactor(_timelineScaleFactor);
   }, [zoom]);
 
-  useEffect(() => {
+  useEffect( () => {
     rebuildTimelineLabels();
   }, [duration]);
 
-  useEffect(() => {
+  useEffect( () => {
     rebuildTimelineLabels();
   }, [keyframes]);
 
@@ -295,7 +273,7 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
     e.preventDefault();
     if(tab.playing){
       tab.pause();
-    } else {
+    }else{
       tab.play();
     }
     setPlaying(tab.playing);
@@ -305,7 +283,7 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
     e.preventDefault();
     tab.stop();
     setPlaying(tab.playing);
-  };
+  }
 
   const onClickZoomIn = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -314,7 +292,7 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
     setZoom(tab.timeline_zoom);
     drawWaveform();
     rebuildTimelineLabels();
-  };
+  }
 
   const onClickZoomOut = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -323,17 +301,17 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
     setZoom(tab.timeline_zoom);
     drawWaveform();
     rebuildTimelineLabels();
-  };
+  }
 
   const onAnimate = (delta: number) => {
-    if (seekerRef.current && tab.lip) {
+    if(seekerRef.current && tab.lip){
       updateSeekerPosition();
       updateScrollBoundsFocus();
     }
-  };
+  }
 
   const updateSeekerPosition = () => {
-    const seekPosition = tab.lip.elapsed * tab.timeline_zoom;
+    const seekPosition = (tab.lip.elapsed * tab.timeline_zoom);
     setSeekPositionLeft(seekPosition);
     setPlayheadTime(tab.lip.elapsed);
   }
@@ -347,13 +325,13 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
         if(seekPosition > keyframeWindowElement.clientWidth + keyframeWindowElement.scrollLeft){
           keyframeWindowElement.scrollLeft = (seekPosition - 50);
         }
-
-        if (seekPosition < keyframeWindowElement.scrollLeft) {
-          keyframeWindowElement.scrollLeft = seekPosition - 50;
+    
+        if(seekPosition < keyframeWindowElement.scrollLeft){
+          keyframeWindowElement.scrollLeft = (seekPosition - 50);
         }
       }
     }
-  };
+  }
 
   const rebuildTimelineLabels = () => {
     let nthTime = timelineScaleFactor/60;
@@ -371,21 +349,21 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
     if(keyframeWindowElement){
       const bRect = keyframeWindowElement.getBoundingClientRect();
 
-      const maxPixels = tab.lip.duration * tab.timeline_zoom;
-
-      const position = e.pageX - bRect.left + keyframeWindowElement.scrollLeft;
-      if (position < 0) return 0;
-      if (position > maxPixels) return maxPixels;
+      let maxPixels = (tab.lip.duration * tab.timeline_zoom);
+      
+      let position = (e.pageX - bRect.left + keyframeWindowElement.scrollLeft);
+      if(position < 0) return 0;
+      if(position > maxPixels) return maxPixels;
       return position;
     }
     return 0;
-  };
+  }
 
   const getTimelinePixelPositionAsTime = (position: number = 0) => {
-    const percentage = position / (tab.lip.duration * tab.timeline_zoom);
-    const time = tab.lip.duration * percentage;
-    if (time < 0) return 0;
-    if (time > tab.lip.duration) return tab.lip.duration;
+    let percentage = position / (tab.lip.duration * tab.timeline_zoom);
+    let time = tab.lip.duration * percentage;
+    if(time < 0) return 0;
+    if(time > tab.lip.duration) return tab.lip.duration;
     return time;
   };
 
@@ -396,11 +374,11 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
       let position = getTimelinePixelPositionRelativeToMouseEvent(e);
       let time = getTimelinePixelPositionAsTime(position);
       tab.seek(time);
-
-      const seekPosition = tab.lip.elapsed * tab.timeline_zoom;
+      
+      const seekPosition = (tab.lip.elapsed * tab.timeline_zoom);
       setSeekPositionLeft(seekPosition);
     }
-  };
+  }
 
   const onClickNextKeyFrame = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -410,7 +388,7 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
     tab.seek(tab.selected_frame.time);
     updateSeekerPosition();
     updateScrollBoundsFocus(true);
-  };
+  }
 
   const onClickPreviousKeyFrame = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -420,7 +398,7 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
     tab.seek(tab.selected_frame.time);
     updateSeekerPosition();
     updateScrollBoundsFocus(true);
-  };
+  }
 
   const onKeyFrameMouseDown = (e: React.MouseEvent<HTMLDivElement>, keyframe: KotOR.ILIPKeyFrame) => {
     e.stopPropagation();
@@ -429,7 +407,7 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
     tab.selectKeyFrame(keyframe);
     tab.dragging_frame_snapshot = Object.assign({}, keyframe);
     tab.dragging_frame = keyframe;
-  };
+  }
 
   const onKeyFrameMouseUp = (e: React.MouseEvent<HTMLDivElement>, keyframe: KotOR.ILIPKeyFrame) => {
     e.stopPropagation();
@@ -450,17 +428,7 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
       tab.lip.elapsed, 0
     );
     tab.selectKeyFrame(newFrame);
-  };
-
-  const onClickDeleteKeyFrame = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    const toRemove = tab.selected_frame;
-    if (!toRemove) return;
-    tab.removeKeyFrame(toRemove);
-    if (tab.selected_frame) tab.seek(tab.selected_frame.time);
-    else tab.seek(Math.min(tab.lip.elapsed, tab.lip.duration));
-    updateSeekerPosition();
-  };
+  }
 
   const onClickDeleteKeyFrame = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -475,27 +443,27 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
   }
 
   const onMouseMoveKeyFrameWindow = (e: React.MouseEvent<HTMLDivElement>) => {
-    const position = getTimelinePixelPositionRelativeToMouseEvent(e);
-    const time = getTimelinePixelPositionAsTime(position);
-    if (tab.scrubbing) {
+    let position = getTimelinePixelPositionRelativeToMouseEvent(e);
+    let time = getTimelinePixelPositionAsTime(position);
+    if(tab.scrubbing){
       tab.seek(time);
-
-      const seekPosition = tab.lip.elapsed * tab.timeline_zoom;
+      
+      const seekPosition = (tab.lip.elapsed * tab.timeline_zoom);
       setSeekPositionLeft(seekPosition);
     }
-
-    if (tab.dragging_frame) {
+    
+    if(tab.dragging_frame){
       tab.dragging_frame.time = time;
       setKeyFrames([...tab.lip.keyframes]);
     }
-  };
+  }
 
   const onMouseDownKeyFrameWindow = (e: React.MouseEvent<HTMLDivElement>) => {
     if(durationDragRef.current.active) return;
     tab.dragging_frame = undefined;
     tab.scrubbing = true;
     tab.pause();
-  };
+  }
 
   const onMouseUpKeyFrameWindow = (e: React.MouseEvent<HTMLDivElement>) => {
     if(tab.dragging_frame){
@@ -503,7 +471,7 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
     }
     if(tab.scrubbing){
       tab.pause();
-      const seekPosition = tab.lip.elapsed * tab.timeline_zoom;
+      const seekPosition = (tab.lip.elapsed * tab.timeline_zoom);
       setSeekPositionLeft(seekPosition);
     }
     tab.scrubbing = false;
@@ -522,7 +490,7 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
     }
     if(tab.scrubbing){
       tab.pause();
-      const seekPosition = tab.lip.elapsed * tab.timeline_zoom;
+      const seekPosition = (tab.lip.elapsed * tab.timeline_zoom);
       setSeekPositionLeft(seekPosition);
     }
     tab.scrubbing = false;
@@ -759,10 +727,6 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
       </div>
     </div>
   );
-};
-
-export interface UILIPUtilitiesControlProps {
-  tab: TabLIPEditorState;
 }
 
 export interface UILIPUtilitiesControlProps {

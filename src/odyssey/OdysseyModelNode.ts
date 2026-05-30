@@ -165,10 +165,6 @@ export class OdysseyModelNode {
         controller.nodeType = this.nodeType = this.odysseyModel.nodes.get(this.name).nodeType;
       }
 
-      if(controller.frameCount != -1){
-
-        if(this instanceof OdysseyModelAnimationNode || this instanceof OdysseyModelNode){
-
       if (controller.frameCount != -1) {
         if (this instanceof OdysseyModelAnimationNode || this instanceof OdysseyModelNode) {
           //Default Controllers

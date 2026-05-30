@@ -69,11 +69,6 @@ export class OdysseyControllerFactory {
   static From(controller: IOdysseyControllerGeneric) {
     if (!(typeof controller === 'object')) return;
 
-  static From( controller: IOdysseyControllerGeneric ){
-
-    if(!(typeof controller === 'object'))
-      return;
-
     switch(controller.type){
       case OdysseyModelControllerType.Position:
         return new PositionController(controller);

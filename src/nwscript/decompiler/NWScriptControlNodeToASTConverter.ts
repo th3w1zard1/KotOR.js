@@ -1070,12 +1070,6 @@ export class NWScriptControlNodeToASTConverter {
       if (hasLogAndII && node.condition.type === 'basic_block') {
         nwscriptDecompilerDebug(`[convertIfNode] Attempting cross-block AND condition extraction from block ${node.condition.block.id} through block ${bodyBlock.id}`);
         // Try to extract the full AND condition by processing blocks together
-        const combinedCondition = this.extractCrossBlockANDCondition(
-          node.condition.block,
-          bodyBlock,
-          functionContext
-        );
-        // Try to extract the full AND condition by processing blocks together
         const combinedCondition = this.extractCrossBlockANDCondition(node.condition.block, bodyBlock, functionContext);
         if (combinedCondition) {
           nwscriptDecompilerDebug(`[convertIfNode] Cross-block AND condition extracted, type: ${combinedCondition.type}`);

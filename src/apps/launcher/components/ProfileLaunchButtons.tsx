@@ -125,7 +125,8 @@ export const ProfileLaunchButtons = function (props: ProfileLaunchButtonsProps) 
               <option value="js">{profile.name} - JS</option>
               <option value="executable">{profile.name} - Retail</option>
             </select>
-          </div> : isForge ? (
+          </div>
+        ) : isForge ? (
             <div className="launch-select">
               <select className="select" onChange={onForgeSelectChange} value={forgeSelectValue ?? forgeCompatibleProfiles[0]?.key ?? ""}>
                 {forgeCompatibleProfiles.map((p: any, index: number) => {
