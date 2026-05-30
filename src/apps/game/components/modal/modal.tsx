@@ -62,6 +62,7 @@ export const KotORModal = ({
           {enableOk && <button className="modal-button" onClick={handleOk}>{okText}</button>}
         </div>
       </div>
+    </div>
     )
   );
 };
