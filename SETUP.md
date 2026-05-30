@@ -172,8 +172,6 @@ npm ci
 
 For a clean install from the lockfile (same as CI), use `npm ci` above. You can use `npm install` instead if you are not matching CI exactly.
 
-The repository includes a `.npmrc` file with `legacy-peer-deps=true` so `npm ci` resolves peer dependency ranges between ESLint and `eslint-plugin-import` the same way across machines.
-
 This will:
 
 - Install all npm packages listed in `package.json`
