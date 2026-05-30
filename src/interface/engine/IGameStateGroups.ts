@@ -1,10 +1,10 @@
-import * as THREE from "three";
+import * as THREE from 'three';
 
 /**
  * IGameStateGroups interface.
- * 
+ *
  * KotOR JS - A remake of the Odyssey Game Engine that powered KotOR I & II
- * 
+ *
  * @file IGameStateGroups.ts
  * @author KobaltBlu <https://github.com/KobaltBlu>
  * @license {@link https://www.gnu.org/licenses/gpl-3.0.txt|GPLv3}
@@ -30,4 +30,6 @@ export interface IGameStateGroups {
   weather_effects: THREE.Group;
   room_walkmeshes: THREE.Group;
   spell_instances: THREE.Group;
-};
+  debug: THREE.Group;
+  collision_helpers: THREE.Group;
+}

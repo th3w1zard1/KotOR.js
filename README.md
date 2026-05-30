@@ -40,6 +40,8 @@ You will need a valid copy of either KotOR I or KotOR II installed on your syste
 
 ## Web Compatibility (NEW)
 
+[Browser Compatibility Table](https://github.com/KobaltBlu/KotOR.js/wiki/Browser-Support)
+
 The recent transition to TypeScript has brought many improvements to the codebase, including Chrome support. When the project is compiled, the contents of the `dist` folder can be uploaded to a web server. The only requirement is that the site must be accessed from behind a valid SSL certificate. Using the latest version of Chrome is recommended.
 
 [![Demo Icon]][Demo Link]
@@ -79,13 +81,12 @@ cd KotOR.js
 npm install
 ```
 
-1. **Start development build** (in one terminal):
+---
 
-```bash
-npm run webpack:dev-watch
-```
+### Running the App
 
-1. **Start the application** (in another terminal):
+#### Option A — Desktop app (Electron) — most common
+This compiles the TypeScript and launches the Electron desktop window. Run this if you just want to play/test the game locally.
 
 ```bash
 npm start
@@ -97,29 +98,28 @@ npm start
 
 #### Development
 
-- `npm start` - Compile and start Electron application
-- `npm run start-watch` - Start with auto-reload on changes
-- `npm run webpack:dev` - Build once in development mode
-- `npm run webpack:dev-watch` - Build in watch mode (auto-rebuild on changes)
+- `npm start` - Compile main process and start Electron application
+- `npm run dev` - Watch main process and auto-restart Electron on changes
+- `npm run watch` - Build web bundle in watch mode (auto-rebuild on changes)
+- `npm run build:web:dev` - Build web bundle once in development mode
 
 #### Building
 
-- `npm run webpack:prod` - Build for production
-- `npm run electron:compile` - Compile Electron TypeScript files
-- `npm run electron:build` - Build complete Electron application
+- `npm run build` - Full production build (webpack + Electron)
+- `npm run build:dev` - Full development build (faster, for local run)
+- `npm run build:web` - Production webpack bundle only
+- `npm run build:electron` - Compile Electron main process only
+- `npm run pack` - Build and package Electron app (electron-builder)
 
 #### Testing
 
 - `npm test` - Run all tests with coverage
 - `npm run test:watch` - Run tests in watch mode
-- `npm run test:coverage` - Generate coverage report
+- `npm run test:quick` - Run tests without coverage (faster)
 
 #### Code Quality
 
 - `npm run lint` - Run ESLint
-- `npm run lint:fix` - Fix ESLint issues automatically
-- `npm run format` - Format code with Prettier
-- `npm run format:check` - Check code formatting
 
 #### Documentation
 
@@ -129,12 +129,14 @@ npm start
 
 For a typical development session:
 
-1. **Terminal 1**: Run `npm run webpack:dev-watch` to automatically rebuild on file changes
-2. **Terminal 2**: Run `npm start` to launch the Electron application
+1. **Terminal 1**: Run `npm run watch` to automatically rebuild the web bundle on file changes
+2. **Terminal 2**: Run `npm start` to launch the Electron application (or `npm run dev` for main-process watch + auto-restart)
 3. **Make changes** in the `src/` directory
 4. **Test your changes** - the application will reload automatically
 5. **Run tests** before committing: `npm test`
-6. **Check code quality**: `npm run lint && npm run format:check`
+6. **Check code quality**: `npm run lint`
+
+Other useful commands: `npm run clean` (remove `dist/`), `npm run rebuild` (clean + build).
 
 ### Project Structure
 
@@ -209,6 +211,8 @@ And many many more!
 - [SETUP.md](SETUP.md) - Detailed setup instructions
 - [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) - Project structure overview
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) - Code of conduct
+- [AGENTS.md](AGENTS.md) - Cursor/AI agent notes, CI expectations, and optional out-of-tree **Fedora Kinoite (WSL2)** workspace
+- [DEVELOPER_QUICK_REFERENCE.md](DEVELOPER_QUICK_REFERENCE.md) - Common npm commands; includes a short Kinoite cross-link
 
 ## License
 
