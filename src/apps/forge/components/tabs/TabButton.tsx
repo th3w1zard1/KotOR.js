@@ -1,81 +1,76 @@
-import React, { MouseEventHandler, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTabManager } from "@/apps/forge/context/TabManagerContext";
 import { TabState } from "@/apps/forge/states/tabs";
-import { useEffectOnce } from "@/apps/forge/helpers/UseEffectOnce";
 
 export interface TabButtonProps {
-  tab: TabState
+  tab: TabState;
+  index: number;
+  onContextMenu?: (e: React.MouseEvent<HTMLLIElement>, tab: TabState, index: number) => void;
+  onDragStart?: (e: React.DragEvent<HTMLLIElement>, index: number) => void;
+  onDragOver?: (e: React.DragEvent<HTMLLIElement>, index: number) => void;
+  onDrop?: (e: React.DragEvent<HTMLLIElement>, index: number) => void;
+  onDragEnd?: (e: React.DragEvent<HTMLLIElement>) => void;
+  dragStateClassName?: string;
 }
 
-export const TabButton = function(props: TabButtonProps) {
-
+export const TabButton = function (props: TabButtonProps) {
   const tab: TabState = props.tab;
-  const [render, rerender] = useState<boolean>(false);
+  const index = props.index;
   const [tabName, setTabName] = useState<string>(tab.tabName);
 
   //tabManager
   const tabManager = useTabManager();
   const [selectedTab, setSelectedTab] = tabManager.selectedTab;
 
-  useEffect( () => {
+  useEffect(() => {
     // console.log('tabName', tab.tabName);
   }, [tabName]);
 
   const onTabNameChange = () => {
-    console.log('onTabNameChange', tab.tabName)
     setTabName(tab.tabName);
   };
 
-  //onCreate
-  useEffectOnce( () => {
+  useEffect(() => {
     tab.addEventListener('onTabNameChange', onTabNameChange);
-    tab.addEventListener('onTabShow', onTabShow);
-    tab.addEventListener('onTabHide', onTabHide);
     return () => {
       tab.removeEventListener('onTabNameChange', onTabNameChange);
-      tab.removeEventListener('onTabShow', onTabShow);
-      tab.removeEventListener('onTabHide', onTabHide);
     }
-  });
+  }, [tab]);
 
   const onTabClick = (e: React.MouseEvent<HTMLLIElement>) => {
     e.preventDefault();
     tab.show();
     setSelectedTab(tab);
-  }
-
-  const onTabShow = () => {
-    rerender(!render);
-  }
-
-  const onTabHide = () => {
-    rerender(!render);
-  }
+  };
 
   const onTabCloseClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    //TODO: Handle unsaved changes modal
     e.stopPropagation();
-    if (tab.file?.unsaved_changes) {
-      const discard = window.confirm(
-        `"${tab.tabName}" has unsaved changes. Close anyway?`
-      );
-      if (!discard) return;
-    }
     tab.remove();
-  }
+  };
 
   return (
-    <li className={`btn btn-tab ${tab.getTabManager()?.currentTab == tab ? `active` : ''}`} onClick={onTabClick}>
+    <li
+      className={`btn btn-tab ${tab.getTabManager()?.currentTab == tab ? `active` : ''} ${props.dragStateClassName || ''}`}
+      onClick={onTabClick}
+      onContextMenu={(e) => props.onContextMenu?.(e, tab, index)}
+      draggable
+      onDragStart={(e) => props.onDragStart?.(e, index)}
+      onDragOver={(e) => props.onDragOver?.(e, index)}
+      onDrop={(e) => props.onDrop?.(e, index)}
+      onDragEnd={(e) => props.onDragEnd?.(e)}
+    >
+      {tab.file?.unsaved_changes ? (<span className="dirty-dot" aria-hidden="true"></span>) : (<></>)}
       <a>{tabName}</a>&nbsp;
-      {(
-        tab.isClosable ? (
-          <button type="button" className="close" onClick={onTabCloseClick} title="Close tab" aria-label="Close tab">
-            <span className="fa-solid fa-xmark" aria-hidden></span>
-          </button>
-        ) : (<></>)
+      {tab.isClosable ? (
+        <button type="button" className="close" onClick={onTabCloseClick}>
+          <span className="fa-solid fa-xmark"></span>
+        </button>
+      ) : (
+        <></>
       )}
     </li>
   );
-
-}
+};
 
 export default TabButton;

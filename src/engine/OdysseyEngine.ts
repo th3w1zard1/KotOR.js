@@ -15,7 +15,7 @@
  * 8. Main loop entry
  */
 
-import { GameVersion, BinaryLayout, BinaryAnalyzer } from "./BinaryAnalysis";
+import { GameVersion, BinaryLayout, BinaryAnalyzer } from "@/engine/BinaryAnalysis";
 
 /**
  * Configuration for engine initialization
@@ -92,7 +92,7 @@ export class OdysseyEngine {
   /**
    * Initialize the game engine
    * Follows the sequence found in binary analysis:
-   * System → Display → Graphics → Input → Audio → Resources → Game State
+   * System -> Display -> Graphics -> Input -> Audio -> Resources -> Game State
    */
   async initialize(): Promise<void> {
     try {
@@ -489,4 +489,4 @@ export class OdysseyEngine {
 }
 
 export default OdysseyEngine;
-export { InitializationPhase, EngineConfig, InitializationContext, GameVersion };
+export { EngineConfig, InitializationContext, GameVersion };

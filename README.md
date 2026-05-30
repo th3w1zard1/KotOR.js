@@ -7,6 +7,7 @@
 ![Node JS](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![NPM](https://img.shields.io/badge/npm-CB3837?style=for-the-badge&logo=npm&logoColor=white)
 ![Webpack](https://img.shields.io/badge/Webpack-8DD6F9?style=for-the-badge&logo=Webpack&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 
 ![KotOR.js](https://raw.githubusercontent.com/KobaltBlu/KotOR.js/master/src/assets/icons/icon.png)
 
@@ -25,7 +26,7 @@ In addition to the game engine, the project includes an early attempt at a moddi
 [Discussion Thread](https://deadlystream.com/topic/6608-wip-kotor-js-a-game-engine-for-k1-k2-written-in-javascript/)
 [KotOR.js Youtube Channel](https://www.youtube.com/channel/UC7b4RL2mj0WJ7fEvbJePDbA)
 
-[![OpenKotOR Discord](https://discordapp.com/api/guilds/739590575359262792/widget.png?style=banner2)](https://discord.gg/QxjqVAuN8T)
+[![OpenKotOR Discord](https://discordapp.com/api/guilds/739590575359262792/widget.png?style=banner2)](https://discord.gg/cxuF4xRD66)
 
 ## Supported Games
 
@@ -81,18 +82,132 @@ cd KotOR.js
 npm install
 ```
 
-1. **Start development build** (in one terminal):
+---
 
-```bash
-npm run webpack:dev-watch
-```
+### Running the App
 
-1. **Start the application** (in another terminal):
+#### Option A — Desktop app (Electron) — most common
+This compiles the TypeScript and launches the Electron desktop window. Run this if you just want to play/test the game locally.
 
 ```bash
 npm start
 ```
 
+1. **Enjoy!** The Electron application should launch automatically.
+
+### Available Scripts
+
+#### Development
+
+- `npm start` - Compile main process and start Electron application
+- `npm run dev` - Watch main process and auto-restart Electron on changes
+- `npm run watch` - Build web bundle in watch mode (auto-rebuild on changes)
+- `npm run build:web:dev` - Build web bundle once in development mode
+
+#### Building
+
+- `npm run build` - Full production build (webpack + Electron)
+- `npm run build:dev` - Full development build (faster, for local run)
+- `npm run build:web` - Production webpack bundle only
+- `npm run build:electron` - Compile Electron main process only
+- `npm run pack` - Build and package Electron app (electron-builder)
+
+#### Testing
+
+**Option B2 — Hot reload while playing (preserves game session):**
+```bash
+npm run dev:hmr
+```
+Runs `webpack:dev-kotor-watch` (engine + workers only) and a **webpack-dev-server** with HMR for the game client. Open **http://localhost:8080/game/?key=kotor**, load into the game, then edit TypeScript under `src/` — successful hot updates keep the live Three.js scene and `GameState` intact instead of forcing a full page reload.
+
+> The HMR server inlines the engine module graph for hot-swap; `webpack:dev-kotor-watch` rebuilds `dist/KotOR.js` and workers without overwriting the HMR game bundle.
+
+> `npm run dev` remains the classic watch + static serve flow. Use `dev:hmr` when iterating on gameplay or engine logic in-browser.
+
+---
+
+#### Code Quality
+
+- `npm run lint` - Run ESLint
+
+#### Documentation
+
+- `npm run typedoc` - Generate API documentation
+
+### Docker
+
+This project can be containerized as a static web app.
+
+Build the image:
+
+```bash
+docker build -t kotor-js-web .
+```
+
+Run it:
+
+```bash
+docker run --rm -p 8080:80 kotor-js-web
+```
+
+Then open:
+
+- `http://localhost:8080/` (Launcher)
+
+Notes:
+
+- The Docker image uses a multi-stage build (`node:alpine` -> `nginx:alpine`).
+- It runs the same production build as local web output: `npm run webpack:prod`.
+
+---
+
+### Other Commands
+
+For a typical development session:
+
+1. **Terminal 1**: Run `npm run watch` to automatically rebuild the web bundle on file changes
+2. **Terminal 2**: Run `npm start` to launch the Electron application (or `npm run dev` for main-process watch + auto-restart)
+3. **Make changes** in the `src/` directory
+4. **Test your changes** - the application will reload automatically
+5. **Run tests** before committing: `npm test`
+6. **Check code quality**: `npm run lint`
+
+Other useful commands: `npm run clean` (remove `dist/`), `npm run rebuild` (clean + build).
+
+### Project Structure
+
+The project is organized into several major components:
+
+- **Core Engine** (`src/engine/`, `src/module/`) - Game engine systems
+- **Applications** (`src/apps/`) - Launcher, Game, Forge, Debugger
+- **Resource System** (`src/resource/`, `src/loaders/`) - File format parsers
+- **Rendering** (`src/three/`, `src/shaders/`) - THREE.js rendering system
+- **Scripting** (`src/nwscript/`) - NWScript interpreter
+
+For detailed information, see [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md).
+
+### Contributing
+
+We welcome contributions! Please read:
+
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Comprehensive contribution guidelines
+- **[SETUP.md](SETUP.md)** - Detailed setup instructions and troubleshooting
+- **[DEVELOPER_QUICK_REFERENCE.md](DEVELOPER_QUICK_REFERENCE.md)** - Quick command reference
+
+Key topics covered:
+
+- Development setup and workflow
+- Coding standards and best practices
+- Testing requirements
+- Pull request process
+- Code of conduct
+
+### Getting Help
+
+- **Discord**: [OpenKotOR Discord Server](https://discord.gg/QxjqVAuN8T)
+- **Discussion Thread**: [DeadlyStream Forum](https://deadlystream.com/topic/6608-wip-kotor-js-a-game-engine-for-k1-k2-written-in-javascript/)
+- **GitHub Issues**: For bug reports and feature requests
+- **Documentation**: Check the `wiki/` directory for API docs (generate with `npm run typedoc`)
 
 ## Screenshots
 
@@ -132,6 +247,8 @@ And many many more!
 - [SETUP.md](SETUP.md) - Detailed setup instructions
 - [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) - Project structure overview
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) - Code of conduct
+- [AGENTS.md](AGENTS.md) - Cursor/AI agent notes, CI expectations, and optional out-of-tree **Fedora Kinoite (WSL2)** workspace
+- [DEVELOPER_QUICK_REFERENCE.md](DEVELOPER_QUICK_REFERENCE.md) - Common npm commands; includes a short Kinoite cross-link
 
 ## License
 

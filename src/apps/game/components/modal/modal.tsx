@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from "react";
-import "@/apps/game/components/modal/modal.scss";
-import { useApp } from "@/apps/game/context/AppContext";
+import React, { useEffect, useState } from 'react';
+import '@/apps/game/components/modal/modal.scss';
+import { useApp } from '@/apps/game/context/AppContext';
 
 export interface KotORModalProps {
   children: React.ReactNode;
   show: boolean;
   title: string;
+  className?: string;
   enableCancel?: boolean;
-  enableOk?: boolean; 
+  enableOk?: boolean;
   cancelText?: string;
   okText?: string;
   onCancel?: (e: React.MouseEvent<HTMLButtonElement>) => void;
@@ -19,6 +20,7 @@ export const KotORModal = ({
   children, 
   show, 
   title, 
+  className = "",
   enableCancel = true, 
   enableOk = true, 
   cancelText = "CANCEL",
@@ -37,7 +39,7 @@ export const KotORModal = ({
   const handleCancel = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     // setIsVisible(false);
-    if(typeof onCancel === "function") {
+    if (typeof onCancel === 'function') {
       onCancel(e);
     }
   };
@@ -45,13 +47,13 @@ export const KotORModal = ({
   const handleOk = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     // setIsVisible(false);
-    if(typeof onOk === "function") {
+    if (typeof onOk === 'function') {
       onOk(e);
     }
   };
 
   return (
-    isVisible && <div className={`kotor-modal-backdrop ${gameKey} ${isVisible ? "visible" : ""}`}>
+    isVisible && <div className={`kotor-modal-backdrop ${gameKey} ${className} ${isVisible ? "visible" : ""}`}>
       <div className="kotor-modal"> 
         <h2 className="modal-heading">{title}</h2>
         <div className="modal-content">{children}</div>
@@ -60,6 +62,6 @@ export const KotORModal = ({
           {enableOk && <button className="modal-button" onClick={handleOk}>{okText}</button>}
         </div>
       </div>
-    </div>
+    )
   );
 };

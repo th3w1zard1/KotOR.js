@@ -1,4 +1,4 @@
-export * from "@/effects/GameEffect";
+export * from '@/effects/GameEffect';
 
 export * from "@/effects/EffectAbilityDecrease";
 export * from "@/effects/EffectAbilityIncrease";
@@ -57,5 +57,6 @@ export * from "@/effects/EffectSlow";
 export * from "@/effects/EffectSpellImmunity";
 export * from "@/effects/EffectTemporaryForce";
 export * from "@/effects/EffectTemporaryHitPoints";
+export * from "@/effects/EffectTrueSeeing";
 export * from "@/effects/EffectVisualEffect";
 export * from "@/effects/GameEffectFactory";

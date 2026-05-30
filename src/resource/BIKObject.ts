@@ -1,8 +1,8 @@
-import { AudioEngine } from "@/audio/AudioEngine";
-import { AudioEngineChannel } from "@/enums/audio/AudioEngineChannel";
-import { BinkWorkerHeader, WorkerRequest, WorkerResponse } from "@/worker/bink-worker";
-import { YUVFrame } from "@/video/binkvideo";
-import { GameFileSystem } from "@/utility/GameFileSystem";
+import { AudioEngine } from '@/audio/AudioEngine';
+import { AudioEngineChannel } from '@/enums/audio/AudioEngineChannel';
+import { BinkWorkerHeader, WorkerRequest, WorkerResponse } from '@/worker/bink-worker';
+import { YUVFrame } from '@/video/binkvideo';
+import { GameFileSystem } from '@/utility/GameFileSystem';
 
 type DecodedAudioPacket = {
   pcm: ArrayBuffer[];
@@ -19,6 +19,7 @@ type DecodedAudioPacket = {
  * BIKObject class.
  * Decodes and streams BIK video/audio. Does not own any Three.js state;
  * VideoManager owns planes and textures and pulls current frame via getCurrentFrame().
+ * Stock resource kind for .bik is 2063; this path decodes in a worker instead of the stock native codec path.
  *
  * @file BIKObject.ts
  * @author KobaltBlu <https://github.com/KobaltBlu>
@@ -56,8 +57,7 @@ export class BIKObject {
   /**
    * Creates a BIKObject. Initializes frame/audio state and worker-related fields; actual worker is created in play().
    */
-  constructor(){
-
+  constructor() {
     this.width = 640;
     this.height = 480;
     this.fps = 29.97;
@@ -98,7 +98,7 @@ export class BIKObject {
    */
   private initializeWorker(buffer: ArrayBuffer): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.worker = new Worker('/bink-worker.js', { type: 'module' });
+      this.worker = new Worker('../bink-worker.js', { type: 'module' });
       this.workerReady = false;
       this.header = null;
       this.frameBuffer.clear();
@@ -183,7 +183,7 @@ export class BIKObject {
     }
     // Cap size: only drop frames we've already displayed (never drop frame we haven't shown yet)
     while (this.frameBuffer.size > BIKObject.FRAME_BUFFER_MAX) {
-      const candidates = [...this.frameBuffer.keys()].filter(idx => idx < this.lastDisplayedFrameIndex);
+      const candidates = [...this.frameBuffer.keys()].filter((idx) => idx < this.lastDisplayedFrameIndex);
       if (candidates.length === 0) break;
       const oldest = Math.min(...candidates);
       this.frameBuffer.delete(oldest);
@@ -228,7 +228,6 @@ export class BIKObject {
         this.requestDecode(this.nextFrameToRequest);
         this.nextFrameToRequest++;
       }
-
     } catch (error) {
       console.error('Failed to play BIK file:', error);
       if (this.onComplete) {
@@ -241,7 +240,11 @@ export class BIKObject {
    * Plays a BIK movie from an in-memory buffer (e.g. Forge editor). Same as play() but skips loading from filesystem.
    * @param buffer - Full BIK file contents (ArrayBuffer).
    */
-  async playFromBuffer(buffer: ArrayBuffer, onComplete?: Function, onReady?: (width: number, height: number) => void): Promise<void> {
+  async playFromBuffer(
+    buffer: ArrayBuffer,
+    onComplete?: Function,
+    onReady?: (width: number, height: number) => void
+  ): Promise<void> {
     if (!buffer || this.disposed) return;
 
     this.onReady = onReady;
@@ -277,7 +280,7 @@ export class BIKObject {
   /**
    * Stops playback: unmutes other channels, mutes MOVIE, sets isPlaying false, terminates the worker, clears frame buffer and decode state, and stops/disconnects all scheduled audio nodes.
    */
-  stop(){
+  stop() {
     AudioEngine.Unmute(AudioEngineChannel.ALL);
     AudioEngine.Mute(AudioEngineChannel.MOVIE);
 
@@ -299,7 +302,11 @@ export class BIKObject {
     // Stop and disconnect all scheduled/playing audio nodes so skip/stop mutes immediately
     while (this.audio_nodes.length) {
       const node = this.audio_nodes.shift()!;
-      try { node.stop(0); } catch (_) { /* already stopped */ }
+      try {
+        node.stop(0);
+      } catch (_) {
+        /* already stopped */
+      }
       node.disconnect();
       node.buffer = undefined;
     }
@@ -380,15 +387,12 @@ export class BIKObject {
     if (frameCount === 0) return;
 
     // Which frame we should be showing based on playback time
-    const displayFrameIndex = Math.min(
-      Math.floor(this.playbackPosition * fps),
-      frameCount - 1
-    );
+    const displayFrameIndex = Math.min(Math.floor(this.playbackPosition * fps), frameCount - 1);
 
     // Display frame from buffer: use exact index if available, else latest we have that's <= displayFrameIndex
     let yuv = this.frameBuffer.get(displayFrameIndex);
     if (!yuv && this.frameBuffer.size > 0) {
-      const indices = [...this.frameBuffer.keys()].filter(i => i <= displayFrameIndex);
+      const indices = [...this.frameBuffer.keys()].filter((i) => i <= displayFrameIndex);
       if (indices.length > 0) {
         const best = Math.max(...indices);
         yuv = this.frameBuffer.get(best)!;
@@ -416,10 +420,7 @@ export class BIKObject {
     }
 
     // Keep buffer fed: request more frames up to the limit
-    while (
-      this.decodeInFlight < BIKObject.MAX_DECODE_IN_FLIGHT &&
-      this.nextFrameToRequest < frameCount
-    ) {
+    while (this.decodeInFlight < BIKObject.MAX_DECODE_IN_FLIGHT && this.nextFrameToRequest < frameCount) {
       this.requestDecode(this.nextFrameToRequest);
       this.nextFrameToRequest++;
     }
@@ -428,8 +429,7 @@ export class BIKObject {
   /**
    * Disposes the BIKObject: sets disposed, stops and terminates the worker, clears header and frame buffer, and stops/disconnects all audio nodes. VideoManager is responsible for removing planes/textures.
    */
-  dispose(){
-
+  dispose() {
     this.disposed = true;
 
     // Stop and clean up worker
@@ -450,11 +450,13 @@ export class BIKObject {
     // Stop and disconnect all scheduled/playing audio nodes
     while (this.audio_nodes.length) {
       const node = this.audio_nodes.shift()!;
-      try { node.stop(0); } catch (_) { /* already stopped */ }
+      try {
+        node.stop(0);
+      } catch (_) {
+        /* already stopped */
+      }
       node.disconnect();
       node.buffer = undefined;
     }
-
   }
-
 }

@@ -1,17 +1,15 @@
-import type { NWScript } from "@/nwscript/NWScript";
-import type { NWScriptInstruction } from "@/nwscript/NWScriptInstruction";
-import { NWScriptBasicBlock } from "@/nwscript/decompiler/NWScriptBasicBlock";
-import { NWScriptEdge, EdgeType } from "@/nwscript/decompiler/NWScriptEdge";
-import {
-  OP_JMP, OP_JSR, OP_JZ, OP_JNZ, OP_RETN, OP_STORE_STATE, OP_STORE_STATEALL
-} from "@/nwscript/NWScriptOPCodes";
+import type { NWScript } from '@/nwscript/NWScript';
+import type { NWScriptInstruction } from '@/nwscript/NWScriptInstruction';
+import { NWScriptBasicBlock } from '@/nwscript/decompiler/NWScriptBasicBlock';
+import { NWScriptEdge, EdgeType } from '@/nwscript/decompiler/NWScriptEdge';
+import { OP_JMP, OP_JSR, OP_JZ, OP_JNZ, OP_RETN, OP_STORE_STATE, OP_STORE_STATEALL } from '@/nwscript/NWScriptOPCodes';
 
 /**
  * Control Flow Graph for NWScript decompilation.
  * Represents the control flow structure of a compiled NCS script.
- * 
+ *
  * KotOR JS - A remake of the Odyssey Game Engine that powered KotOR I & II
- * 
+ *
  * @file NWScriptControlFlowGraph.ts
  * @author KobaltBlu <https://github.com/KobaltBlu>
  * @license {@link https://www.gnu.org/licenses/gpl-3.0.txt|GPLv3}
@@ -102,6 +100,14 @@ export class NWScriptControlFlowGraph {
   backEdges: Set<NWScriptEdge> = new Set();
 
   /**
+   * Unconditional backward {@code JMP} edges inside a procedure region that are **not**
+   * classified as {@link backEdges} because global dominance from script entry can miss the
+   * latch (e.g. JSR/RET merges before the loop header). Used only for {@link identifyNaturalLoops};
+   * they are not required to satisfy {@code dominates(to, from)}.
+   */
+  procedureLatchEdges: Set<NWScriptEdge> = new Set();
+
+  /**
    * Critical edges (from has multiple successors, to has multiple predecessors)
    */
   criticalEdges: Set<NWScriptEdge> = new Set();
@@ -188,6 +194,7 @@ export class NWScriptControlFlowGraph {
     this.orderedEdges = [];
     this.edgeMap.clear();
     this.backEdges.clear();
+    this.procedureLatchEdges.clear();
     this.criticalEdges.clear();
     this.blockDepths.clear();
     this.naturalLoops.clear();
@@ -208,10 +215,10 @@ export class NWScriptControlFlowGraph {
 
     // Step 1: Identify all jump targets and subroutine entries
     this.identifyJumpTargets();
-    
+
     // Step 1.5: Identify STORE_STATE+JMP targets and callback entries (these are NOT function entries)
     this.identifyStoreStateJmpTargets();
-    
+
     // Step 1.6: Compute leader set (entry, branch/call targets, callback entries, fallthrough after terminators, continuation after JSR)
     this.computeLeaders();
 
@@ -227,21 +234,23 @@ export class NWScriptControlFlowGraph {
     // Step 4: Identify entry and exit blocks
     this.identifyEntryAndExitBlocks();
 
-    // Step 5: Compute dominators (for loop detection and decompilation)
-    // Note: Loop identification is done by NWScriptControlStructureBuilder, not here
+    // Step 5: Build typed edge list (must precede dominators/post-dominators — getEdge/edgeMap drive intra-procedural walks)
+    this.buildEdges();
+
+    // Step 6: Compute dominators (for loop detection and decompilation)
     this.computeDominators();
 
-    // Step 6: Compute post-dominators (for merge point detection and unreachable code)
+    // Step 7: Compute post-dominators (for merge point detection and unreachable code)
     this.computePostDominators();
 
-    // Step 7: Identify unreachable code
+    // Step 8: Identify unreachable code
     this.identifyUnreachableCode();
-
-    // Step 8: Build edge information with types
-    this.buildEdges();
 
     // Step 9: Identify back edges
     this.identifyBackEdges();
+
+    // Step 9b: Procedure-local backward unconditional JMPs not caught by dominance (NCSDecomp-style latch hints)
+    this.populateProcedureLatchEdges();
 
     // Step 10: Identify critical edges
     this.identifyCriticalEdges();
@@ -309,20 +318,22 @@ export class NWScriptControlFlowGraph {
    * Identify JMP targets and callback entries that are part of STORE_STATE patterns
    * These should NOT be treated as function entries
    * Documentation: "STORE_STATE - Store the Current Stack State... This byte code is always followed by a JMP and then a block of code to be executed by a later function such as a DelayCommand."
-   * 
+   *
    * CRITICAL: The `type` field of STORE_STATE is the offset to the callback entry point.
    * Callback entry = STORE_STATE_address + instruction.type
+   *
+   * Thunk linear span policy: align with {@link NWScriptStoreStateThunkSkip.computeInlinedThunkSkipAddresses}.
    */
   private identifyStoreStateJmpTargets(): void {
     this.storeStateJmpTargets.clear();
     this.callbackEntries.clear();
-    
+
     for (const instruction of this.script.instructions.values()) {
       if (instruction.code === OP_STORE_STATE || instruction.code === OP_STORE_STATEALL) {
         // The type field is the callback offset
         // Callback entry = STORE_STATE_address + type
         const callbackEntry = instruction.address + instruction.type;
-        
+
         // Track callback entry
         if (instruction.code === OP_STORE_STATE) {
           // STORE_STATE has bpOffset (saved globals) and spOffset (saved locals)
@@ -331,17 +342,17 @@ export class NWScriptControlFlowGraph {
           this.callbackEntries.set(callbackEntry, {
             storeStateAddress: instruction.address,
             savedGlobals: savedGlobals,
-            savedLocals: savedLocals
+            savedLocals: savedLocals,
           });
         } else {
           // STORE_STATEALL (obsolete, no size parameters)
           this.callbackEntries.set(callbackEntry, {
             storeStateAddress: instruction.address,
             savedGlobals: 0,
-            savedLocals: 0
+            savedLocals: 0,
           });
         }
-        
+
         // Track JMP target (where outer ACTION call happens)
         const nextInstr = instruction.nextInstr;
         if (nextInstr && nextInstr.code === OP_JMP && nextInstr.offset !== undefined) {
@@ -365,8 +376,7 @@ export class NWScriptControlFlowGraph {
     this.leaders.clear();
 
     // Get all instructions sorted by address
-    const sortedInstructions = Array.from(this.script.instructions.values())
-      .sort((a, b) => a.address - b.address);
+    const sortedInstructions = Array.from(this.script.instructions.values()).sort((a, b) => a.address - b.address);
 
     // 1. Entry point (address 0)
     if (sortedInstructions.length > 0 && sortedInstructions[0].address === 0) {
@@ -408,11 +418,13 @@ export class NWScriptControlFlowGraph {
    * Check if an instruction is a terminator (ends a basic block)
    */
   private isTerminator(instruction: NWScriptInstruction): boolean {
-    return instruction.code === OP_JMP ||
-           instruction.code === OP_JSR ||
-           instruction.code === OP_JZ ||
-           instruction.code === OP_JNZ ||
-           instruction.code === OP_RETN;
+    return (
+      instruction.code === OP_JMP ||
+      instruction.code === OP_JSR ||
+      instruction.code === OP_JZ ||
+      instruction.code === OP_JNZ ||
+      instruction.code === OP_RETN
+    );
   }
 
   /**
@@ -420,15 +432,14 @@ export class NWScriptControlFlowGraph {
    * A basic block is a sequence of instructions from a leader until:
    * - A terminator (JMP/JZ/JNZ/JSR/RETN/EOF)
    * - The next leader
-   * 
+   *
    * Special handling: STORE_STATE+JMP is consumed as a single block.
    */
   private buildBasicBlocks(): void {
     let blockId = 0;
 
     // Get instructions sorted by address and create address-to-instruction map
-    const sortedInstructions = Array.from(this.script.instructions.values())
-      .sort((a, b) => a.address - b.address);
+    const sortedInstructions = Array.from(this.script.instructions.values()).sort((a, b) => a.address - b.address);
     const instructionMap = new Map<number, NWScriptInstruction>();
     for (const instr of sortedInstructions) {
       instructionMap.set(instr.address, instr);
@@ -452,17 +463,17 @@ export class NWScriptControlFlowGraph {
           block.addInstruction(nextInstr);
           block.endInstruction = nextInstr;
           block.exitType = 'jump';
-          
+
           this.blocks.set(block.id, block);
           this.instructionToBlock.set(leaderInstr.address, block);
           this.instructionToBlock.set(nextInstr.address, block);
-          
+
           // Mark as entry if address 0
           if (leaderInstr.address === 0) {
             this.entryBlock = block;
             block.isEntry = true;
           }
-          
+
           continue;
         }
       }
@@ -479,9 +490,11 @@ export class NWScriptControlFlowGraph {
       }
 
       // Check if this is a subroutine entry
-      if (this.jsrTargets.has(leaderAddr) && 
-          !this.storeStateJmpTargets.has(leaderAddr) &&
-          !this.callbackEntries.has(leaderAddr)) {
+      if (
+        this.jsrTargets.has(leaderAddr) &&
+        !this.storeStateJmpTargets.has(leaderAddr) &&
+        !this.callbackEntries.has(leaderAddr)
+      ) {
         this.subroutineEntries.set(leaderAddr, block);
       }
 
@@ -497,9 +510,9 @@ export class NWScriptControlFlowGraph {
             block.addInstruction(currentInstr);
             this.instructionToBlock.set(currentInstr.address, block);
           }
-          
+
           block.endInstruction = currentInstr;
-          
+
           switch (currentInstr.code) {
             case OP_JMP:
               block.exitType = 'jump';
@@ -523,8 +536,7 @@ export class NWScriptControlFlowGraph {
         }
 
         // Stop if we've reached the next leader
-        if (nextLeaderAddr !== null && currentInstr.nextInstr && 
-            currentInstr.nextInstr.address >= nextLeaderAddr) {
+        if (nextLeaderAddr !== null && currentInstr.nextInstr && currentInstr.nextInstr.address >= nextLeaderAddr) {
           block.endInstruction = currentInstr;
           block.exitType = 'fallthrough';
           break;
@@ -568,8 +580,9 @@ export class NWScriptControlFlowGraph {
    */
   private connectBlocks(): void {
     // Process blocks in deterministic order (by start address)
-    const sortedBlocks = Array.from(this.blocks.values())
-      .sort((a, b) => a.startInstruction.address - b.startInstruction.address);
+    const sortedBlocks = Array.from(this.blocks.values()).sort(
+      (a, b) => a.startInstruction.address - b.startInstruction.address
+    );
 
     for (const block of sortedBlocks) {
       const lastInstr = block.endInstruction;
@@ -621,10 +634,10 @@ export class NWScriptControlFlowGraph {
             const targetBlock = this.instructionToBlock.get(targetAddr);
             if (targetBlock) {
               const isTrueBranch = lastInstr.code === OP_JNZ;
-              successors.push({ 
-                block: targetBlock, 
+              successors.push({
+                block: targetBlock,
                 type: isTrueBranch ? EdgeType.TRUE_BRANCH : EdgeType.FALSE_BRANCH,
-                condition: isTrueBranch
+                condition: isTrueBranch,
               });
             }
           }
@@ -633,10 +646,10 @@ export class NWScriptControlFlowGraph {
             const fallthroughBlock = this.instructionToBlock.get(lastInstr.nextInstr.address);
             if (fallthroughBlock) {
               const isTrueBranch = lastInstr.code === OP_JZ;
-              successors.push({ 
-                block: fallthroughBlock, 
+              successors.push({
+                block: fallthroughBlock,
                 type: isTrueBranch ? EdgeType.TRUE_BRANCH : EdgeType.FALSE_BRANCH,
-                condition: isTrueBranch
+                condition: isTrueBranch,
               });
             }
           }
@@ -665,7 +678,7 @@ export class NWScriptControlFlowGraph {
       if (block.startInstruction.code === OP_STORE_STATE || block.startInstruction.code === OP_STORE_STATEALL) {
         const callbackEntry = block.startInstruction.address + block.startInstruction.type;
         const callbackBlock = this.instructionToBlock.get(callbackEntry);
-        if (callbackBlock && !successors.some(s => s.block === callbackBlock)) {
+        if (callbackBlock && !successors.some((s) => s.block === callbackBlock)) {
           // Add callback edge (using CALL type for now, could be a separate CALLBACK type)
           successors.push({ block: callbackBlock, type: EdgeType.CALL });
         }
@@ -673,7 +686,7 @@ export class NWScriptControlFlowGraph {
 
       // Add successors in deterministic order (by address)
       successors.sort((a, b) => a.block.startInstruction.address - b.block.startInstruction.address);
-      
+
       for (const succ of successors) {
         block.addSuccessor(succ.block);
       }
@@ -733,7 +746,7 @@ export class NWScriptControlFlowGraph {
           for (const dom of firstPred.dominators) {
             newDominators.add(dom);
           }
-          
+
           for (const pred of intraPreds) {
             const toRemove: NWScriptBasicBlock[] = [];
             for (const dom of newDominators) {
@@ -746,19 +759,20 @@ export class NWScriptControlFlowGraph {
             }
           }
         }
-        
+
         // Add self
         newDominators.add(block);
 
-        if (newDominators.size !== block.dominators.size ||
-            !Array.from(newDominators).every(d => block.dominators.has(d))) {
+        if (
+          newDominators.size !== block.dominators.size ||
+          !Array.from(newDominators).every((d) => block.dominators.has(d))
+        ) {
           block.dominators = newDominators;
           changed = true;
         }
       }
     }
   }
-
 
   /**
    * Compute post-dominators for each block, ignoring CALL edges (and optionally RETURN edges)
@@ -796,7 +810,7 @@ export class NWScriptControlFlowGraph {
           for (const postDom of firstSucc.postDominators) {
             newPostDominators.add(postDom);
           }
-          
+
           for (const succ of intraSuccs) {
             const toRemove: NWScriptBasicBlock[] = [];
             for (const postDom of newPostDominators) {
@@ -809,12 +823,14 @@ export class NWScriptControlFlowGraph {
             }
           }
         }
-        
+
         // Add self
         newPostDominators.add(block);
 
-        if (newPostDominators.size !== block.postDominators.size ||
-            !Array.from(newPostDominators).every(pd => block.postDominators.has(pd))) {
+        if (
+          newPostDominators.size !== block.postDominators.size ||
+          !Array.from(newPostDominators).every((pd) => block.postDominators.has(pd))
+        ) {
           block.postDominators = newPostDominators;
           changed = true;
         }
@@ -916,11 +932,13 @@ export class NWScriptControlFlowGraph {
    * - EOF: End of file
    */
   private isControlFlowInstruction(instruction: NWScriptInstruction): boolean {
-    return instruction.code === OP_JMP ||
-           instruction.code === OP_JSR ||
-           instruction.code === OP_JZ ||
-           instruction.code === OP_JNZ ||
-           instruction.code === OP_RETN;
+    return (
+      instruction.code === OP_JMP ||
+      instruction.code === OP_JSR ||
+      instruction.code === OP_JZ ||
+      instruction.code === OP_JNZ ||
+      instruction.code === OP_RETN
+    );
   }
 
   /**
@@ -934,7 +952,9 @@ export class NWScriptControlFlowGraph {
     if (!this.entryBlock) {
       errors.push('CFG Validation Error: No entry block found (expected instruction at address 0)');
     } else if (this.entryBlock.startInstruction.address !== 0) {
-      errors.push(`CFG Validation Error: Entry block should start at address 0, but starts at ${this.entryBlock.startInstruction.address}`);
+      errors.push(
+        `CFG Validation Error: Entry block should start at address 0, but starts at ${this.entryBlock.startInstruction.address}`
+      );
     }
 
     // Validate exit blocks
@@ -969,12 +989,16 @@ export class NWScriptControlFlowGraph {
           const targetAddr = jsrInstr.address + jsrInstr.offset;
           const targetBlock = this.instructionToBlock.get(targetAddr);
           if (targetBlock && !jsrBlock.successors.has(targetBlock)) {
-            errors.push(`CFG Validation Error: JSR block at address ${jsrAddress} does not connect to subroutine entry at ${targetAddr}`);
+            errors.push(
+              `CFG Validation Error: JSR block at address ${jsrAddress} does not connect to subroutine entry at ${targetAddr}`
+            );
           }
         }
 
         if (jsrInstr.nextInstr && returnBlock && !jsrBlock.successors.has(returnBlock)) {
-          errors.push(`CFG Validation Error: JSR block at address ${jsrAddress} does not connect to return point at ${jsrInstr.nextInstr.address}`);
+          errors.push(
+            `CFG Validation Error: JSR block at address ${jsrAddress} does not connect to return point at ${jsrInstr.nextInstr.address}`
+          );
         }
       }
     }
@@ -984,17 +1008,25 @@ export class NWScriptControlFlowGraph {
       if (instruction.code === OP_STORE_STATE || instruction.code === OP_STORE_STATEALL) {
         const nextInstr = instruction.nextInstr;
         if (!nextInstr) {
-          errors.push(`CFG Validation Error: STORE_STATE/STORE_STATEALL at address ${instruction.address} is not followed by an instruction`);
+          errors.push(
+            `CFG Validation Error: STORE_STATE/STORE_STATEALL at address ${instruction.address} is not followed by an instruction`
+          );
         } else if (nextInstr.code !== OP_JMP) {
-          errors.push(`CFG Validation Error: STORE_STATE/STORE_STATEALL at address ${instruction.address} is not followed by JMP (found ${nextInstr.codeName || nextInstr.code})`);
+          errors.push(
+            `CFG Validation Error: STORE_STATE/STORE_STATEALL at address ${instruction.address} is not followed by JMP (found ${nextInstr.codeName || nextInstr.code})`
+          );
         } else if (nextInstr.offset !== undefined) {
           const jmpTarget = nextInstr.address + nextInstr.offset;
           if (!this.storeStateJmpTargets.has(jmpTarget)) {
-            errors.push(`CFG Validation Error: STORE_STATE+JMP target at address ${jmpTarget} is not marked as a STORE_STATE target`);
+            errors.push(
+              `CFG Validation Error: STORE_STATE+JMP target at address ${jmpTarget} is not marked as a STORE_STATE target`
+            );
           }
           // Check that STORE_STATE JMP target is not treated as a function entry
           if (this.subroutineEntries.has(jmpTarget)) {
-            errors.push(`CFG Validation Error: STORE_STATE+JMP target at address ${jmpTarget} is incorrectly marked as a subroutine entry`);
+            errors.push(
+              `CFG Validation Error: STORE_STATE+JMP target at address ${jmpTarget} is incorrectly marked as a subroutine entry`
+            );
           }
         }
       }
@@ -1004,7 +1036,9 @@ export class NWScriptControlFlowGraph {
     for (const block of this.blocks.values()) {
       if (block.endInstruction && block.endInstruction.code === OP_RETN) {
         if (block.successors.size > 0) {
-          errors.push(`CFG Validation Error: RETN block ${block.id} has ${block.successors.size} successors (should have 0)`);
+          errors.push(
+            `CFG Validation Error: RETN block ${block.id} has ${block.successors.size} successors (should have 0)`
+          );
         }
         if (!block.isExit) {
           errors.push(`CFG Validation Error: RETN block ${block.id} is not marked as exit`);
@@ -1051,7 +1085,9 @@ export class NWScriptControlFlowGraph {
         }
 
         if (block.isUnreachable !== computedUnreachable) {
-          errors.push(`CFG Validation Error: Block ${block.id} has inconsistent unreachable marking (marked: ${block.isUnreachable}, computed: ${computedUnreachable})`);
+          errors.push(
+            `CFG Validation Error: Block ${block.id} has inconsistent unreachable marking (marked: ${block.isUnreachable}, computed: ${computedUnreachable})`
+          );
         }
       }
     }
@@ -1059,7 +1095,42 @@ export class NWScriptControlFlowGraph {
     // Validate back edges
     for (const backEdge of this.backEdges) {
       if (!this.dominates(backEdge.to, backEdge.from)) {
-        errors.push(`CFG Validation Error: Edge ${backEdge.from.id}->${backEdge.to.id} is marked as back edge but target does not dominate source`);
+        errors.push(
+          `CFG Validation Error: Edge ${backEdge.from.id}->${backEdge.to.id} is marked as back edge but target does not dominate source`
+        );
+      }
+    }
+
+    // Procedure latch edges (not dominance-classified; must be backward unconditional JMP)
+    for (const edge of this.procedureLatchEdges) {
+      if (this.backEdges.has(edge)) {
+        errors.push(
+          `CFG Validation Error: Edge ${edge.from.id}->${edge.to.id} must not appear in both backEdges and procedureLatchEdges`
+        );
+      }
+      if (edge.type !== EdgeType.JUMP) {
+        errors.push(
+          `CFG Validation Error: Procedure latch edge ${edge.from.id}->${edge.to.id} must be JUMP (got ${edge.type})`
+        );
+        continue;
+      }
+      const last = edge.from.endInstruction;
+      if (!last || last.code !== OP_JMP || last.offset === undefined) {
+        errors.push(
+          `CFG Validation Error: Procedure latch edge ${edge.from.id}->${edge.to.id} must end with OP_JMP`
+        );
+        continue;
+      }
+      const targetPc = last.address + last.offset;
+      if (edge.to.startInstruction.address !== targetPc) {
+        errors.push(
+          `CFG Validation Error: Procedure latch JMP target mismatch ${edge.from.id}->${edge.to.id}`
+        );
+      }
+      if (targetPc >= edge.from.startInstruction.address) {
+        errors.push(
+          `CFG Validation Error: Procedure latch edge ${edge.from.id}->${edge.to.id} must jump backward in PC`
+        );
       }
     }
 
@@ -1070,7 +1141,9 @@ export class NWScriptControlFlowGraph {
       }
       for (const block of loopBlocks) {
         if (block !== header && !block.isLoopBody) {
-          errors.push(`CFG Validation Error: Block ${block.id} is in natural loop of ${header.id} but is not marked as loop body`);
+          errors.push(
+            `CFG Validation Error: Block ${block.id} is in natural loop of ${header.id} but is not marked as loop body`
+          );
         }
       }
     }
@@ -1090,7 +1163,41 @@ export class NWScriptControlFlowGraph {
    * Get the basic block containing a specific instruction address
    */
   getBlockForAddress(address: number): NWScriptBasicBlock | null {
-    return this.instructionToBlock.get(address) || null;
+    const mapped = this.instructionToBlock.get(address);
+    if (mapped) {
+      return mapped;
+    }
+    for (const b of this.blocks.values()) {
+      if (b.containsAddress(address)) {
+        return b;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Topological order of blocks reachable from {@code entry} (post-order reversed).
+   * Use for procedure-local linearization; {@link getTopologicalOrder} starts at script entry only.
+   */
+  getTopologicalOrderFromEntry(entry: NWScriptBasicBlock): NWScriptBasicBlock[] {
+    const visited = new Set<NWScriptBasicBlock>();
+    const result: NWScriptBasicBlock[] = [];
+
+    const visit = (block: NWScriptBasicBlock) => {
+      if (visited.has(block)) {
+        return;
+      }
+      visited.add(block);
+
+      for (const successor of block.successors) {
+        visit(successor);
+      }
+
+      result.push(block);
+    };
+
+    visit(entry);
+    return result.reverse();
   }
 
   /**
@@ -1181,8 +1288,9 @@ export class NWScriptControlFlowGraph {
     this.edgeMap.clear();
 
     // Process blocks in deterministic order (by start address)
-    const sortedBlocks = Array.from(this.blocks.values())
-      .sort((a, b) => a.startInstruction.address - b.startInstruction.address);
+    const sortedBlocks = Array.from(this.blocks.values()).sort(
+      (a, b) => a.startInstruction.address - b.startInstruction.address
+    );
 
     for (const block of sortedBlocks) {
       const lastInstr = block.endInstruction;
@@ -1196,8 +1304,10 @@ export class NWScriptControlFlowGraph {
         let condition: boolean | undefined = undefined;
 
         // Check if this is a callback edge first (STORE_STATE blocks)
-        if ((block.startInstruction.code === OP_STORE_STATE || block.startInstruction.code === OP_STORE_STATEALL) &&
-            this.callbackEntries.has(successor.startInstruction.address)) {
+        if (
+          (block.startInstruction.code === OP_STORE_STATE || block.startInstruction.code === OP_STORE_STATEALL) &&
+          this.callbackEntries.has(successor.startInstruction.address)
+        ) {
           edgeType = EdgeType.CALL; // Callback edge
         } else {
           // Determine edge type based on block exit type
@@ -1219,10 +1329,8 @@ export class NWScriptControlFlowGraph {
             case 'conditional':
               // Determine if this is true or false branch
               if (lastInstr.code === OP_JZ || lastInstr.code === OP_JNZ) {
-                const targetAddr = lastInstr.offset !== undefined 
-                  ? lastInstr.address + lastInstr.offset 
-                  : null;
-                
+                const targetAddr = lastInstr.offset !== undefined ? lastInstr.address + lastInstr.offset : null;
+
                 if (targetAddr !== null && successor.startInstruction.address === targetAddr) {
                   // This is the jump target
                   edgeType = lastInstr.code === OP_JZ ? EdgeType.FALSE_BRANCH : EdgeType.TRUE_BRANCH;
@@ -1263,16 +1371,114 @@ export class NWScriptControlFlowGraph {
   }
 
   /**
-   * Identify back edges (edges where target dominates source)
+   * Forward-reachable blocks from {@code start} (successor closure).
+   */
+  private forwardReachableFrom(start: NWScriptBasicBlock): Set<NWScriptBasicBlock> {
+    const region = new Set<NWScriptBasicBlock>();
+    const queue: NWScriptBasicBlock[] = [start];
+    while (queue.length > 0) {
+      const b = queue.shift()!;
+      if (region.has(b)) {
+        continue;
+      }
+      region.add(b);
+      for (const succ of b.successors) {
+        if (!region.has(succ)) {
+          queue.push(succ);
+        }
+      }
+    }
+    return region;
+  }
+
+  /**
+   * Region for dominance when recovering loops inside a subroutine: forward closure from its
+   * entry plus immediate {@link EdgeType.CALL} predecessors (JSR sites).
+   */
+  private procedureRegionForEntry(entry: NWScriptBasicBlock): Set<NWScriptBasicBlock> {
+    const region = this.forwardReachableFrom(entry);
+    for (const p of entry.predecessors) {
+      const e = this.getEdge(p, entry);
+      if (e && e.type === EdgeType.CALL) {
+        region.add(p);
+      }
+    }
+    return region;
+  }
+
+  /**
+   * Collect unconditional {@code OP_JMP} edges that jump to a PC **before** the latch block start,
+   * with both endpoints in the same {@link procedureRegionForEntry} for some script or subroutine
+   * root. Used for tests and for {@link procedureLatchEdges} / natural loop recovery when whole-graph
+   * dominance misses the latch.
+   */
+  collectProcedureBackwardUnconditionalJumpEdges(): NWScriptEdge[] {
+    const out: NWScriptEdge[] = [];
+    const roots = new Map<number, NWScriptBasicBlock>();
+    if (this.entryBlock) {
+      roots.set(this.entryBlock.id, this.entryBlock);
+    }
+    for (const [, block] of this.subroutineEntries) {
+      roots.set(block.id, block);
+    }
+    for (const root of roots.values()) {
+      const region = this.procedureRegionForEntry(root);
+      for (const edge of this.edges) {
+        if (!region.has(edge.from) || !region.has(edge.to)) {
+          continue;
+        }
+        if (edge.type !== EdgeType.JUMP) {
+          continue;
+        }
+        const last = edge.from.endInstruction;
+        if (!last || last.code !== OP_JMP || last.offset === undefined) {
+          continue;
+        }
+        const targetPc = last.address + last.offset;
+        if (edge.to.startInstruction.address !== targetPc) {
+          continue;
+        }
+        if (targetPc >= edge.from.startInstruction.address) {
+          continue;
+        }
+        out.push(edge);
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Count {@link collectProcedureBackwardUnconditionalJumpEdges} (test / diagnostic oracle).
+   */
+  countBackwardUnconditionalJmpsInProcedureRegions(): number {
+    return this.collectProcedureBackwardUnconditionalJumpEdges().length;
+  }
+
+  /**
+   * Fill {@link procedureLatchEdges} with backward unconditional JMPs in procedure regions that
+   * were not marked as dominance {@link backEdges}.
+   */
+  private populateProcedureLatchEdges(): void {
+    this.procedureLatchEdges.clear();
+    for (const edge of this.collectProcedureBackwardUnconditionalJumpEdges()) {
+      if (!edge.isBackEdge) {
+        this.procedureLatchEdges.add(edge);
+      }
+    }
+  }
+
+  /**
+   * Identify back edges (edges where target dominates source).
    */
   private identifyBackEdges(): void {
     this.backEdges.clear();
 
     for (const edge of this.edges) {
-      // A back edge is one where the target dominates the source
       if (this.dominates(edge.to, edge.from)) {
         edge.isBackEdge = true;
         this.backEdges.add(edge);
+      } else {
+        edge.isBackEdge = false;
       }
     }
   }
@@ -1323,7 +1529,14 @@ export class NWScriptControlFlowGraph {
   private identifyNaturalLoops(): void {
     this.naturalLoops.clear();
 
-    for (const backEdge of this.backEdges) {
+    const seenEdge = new Set<string>();
+    const absorb = (backEdge: NWScriptEdge): void => {
+      const key = `${backEdge.from.id}->${backEdge.to.id}`;
+      if (seenEdge.has(key)) {
+        return;
+      }
+      seenEdge.add(key);
+
       const header = backEdge.to;
       const tail = backEdge.from;
 
@@ -1337,13 +1550,24 @@ export class NWScriptControlFlowGraph {
 
       // Add all blocks that can reach tail without going through header
       this.addLoopBlocks(header, tail, loopBlocks);
+    };
+
+    for (const backEdge of this.backEdges) {
+      absorb(backEdge);
+    }
+    for (const latchEdge of this.procedureLatchEdges) {
+      absorb(latchEdge);
     }
   }
 
   /**
    * Recursively add blocks to a natural loop
    */
-  private addLoopBlocks(header: NWScriptBasicBlock, current: NWScriptBasicBlock, loopBlocks: Set<NWScriptBasicBlock>): void {
+  private addLoopBlocks(
+    header: NWScriptBasicBlock,
+    current: NWScriptBasicBlock,
+    loopBlocks: Set<NWScriptBasicBlock>
+  ): void {
     for (const pred of current.predecessors) {
       if (pred !== header && !loopBlocks.has(pred)) {
         loopBlocks.add(pred);
@@ -1480,7 +1704,7 @@ export class NWScriptControlFlowGraph {
     if (blocks.length === 1) return blocks[0];
 
     // Start with dominators of first block
-    let common = new Set(blocks[0].dominators);
+    const common = new Set(blocks[0].dominators);
 
     // Intersect with dominators of other blocks
     for (let i = 1; i < blocks.length; i++) {
@@ -1498,7 +1722,7 @@ export class NWScriptControlFlowGraph {
     // Find the immediate dominator (closest to blocks)
     let idom: NWScriptBasicBlock | null = null;
     for (const dom of common) {
-      if (blocks.every(b => b === dom || b.dominators.has(dom))) {
+      if (blocks.every((b) => b === dom || b.dominators.has(dom))) {
         if (!idom || this.dominates(dom, idom)) {
           idom = dom;
         }
@@ -1516,7 +1740,7 @@ export class NWScriptControlFlowGraph {
     if (blocks.length === 1) return blocks[0];
 
     // Start with post-dominators of first block
-    let common = new Set(blocks[0].postDominators);
+    const common = new Set(blocks[0].postDominators);
 
     // Intersect with post-dominators of other blocks
     for (let i = 1; i < blocks.length; i++) {
@@ -1534,7 +1758,7 @@ export class NWScriptControlFlowGraph {
     // Find the immediate post-dominator (closest to blocks)
     let ipdom: NWScriptBasicBlock | null = null;
     for (const postDom of common) {
-      if (blocks.every(b => b === postDom || b.postDominators.has(postDom))) {
+      if (blocks.every((b) => b === postDom || b.postDominators.has(postDom))) {
         if (!ipdom || this.postDominates(postDom, ipdom)) {
           ipdom = postDom;
         }
@@ -1570,7 +1794,12 @@ export class NWScriptControlFlowGraph {
   /**
    * Add an edge (and update block connections)
    */
-  addEdge(from: NWScriptBasicBlock, to: NWScriptBasicBlock, type: EdgeType = EdgeType.FALLTHROUGH, weight: number = 1.0): NWScriptEdge {
+  addEdge(
+    from: NWScriptBasicBlock,
+    to: NWScriptBasicBlock,
+    type: EdgeType = EdgeType.FALLTHROUGH,
+    weight: number = 1.0
+  ): NWScriptEdge {
     if (this.hasEdge(from, to)) {
       return this.getEdge(from, to)!;
     }
@@ -1596,6 +1825,7 @@ export class NWScriptControlFlowGraph {
     this.edges.delete(edge);
     this.edgeMap.delete(edgeKey);
     this.backEdges.delete(edge);
+    this.procedureLatchEdges.delete(edge);
     this.criticalEdges.delete(edge);
 
     return true;
@@ -1629,12 +1859,12 @@ export class NWScriptControlFlowGraph {
   getSubgraph(blocks: Set<NWScriptBasicBlock>): NWScriptControlFlowGraph {
     // Create a new CFG with only the specified blocks
     const subgraph = new NWScriptControlFlowGraph(this.script);
-    
+
     // Add blocks
     for (const block of blocks) {
       subgraph.blocks.set(block.id, block);
       subgraph.instructionToBlock.set(block.startInstruction.address, block);
-      
+
       // Add edges that are within the subgraph
       for (const successor of block.successors) {
         if (blocks.has(successor)) {
@@ -1665,7 +1895,7 @@ export class NWScriptControlFlowGraph {
    * Get critical edges
    */
   getCriticalEdges(): Array<[NWScriptBasicBlock, NWScriptBasicBlock]> {
-    return Array.from(this.criticalEdges).map(edge => [edge.from, edge.to]);
+    return Array.from(this.criticalEdges).map((edge) => [edge.from, edge.to]);
   }
 
   /**
@@ -1764,10 +1994,8 @@ export class NWScriptControlFlowGraph {
       result.push(block);
 
       // Visit children in dominance tree (blocks dominated by this block)
-      const children = Array.from(this.blocks.values()).filter(b => 
-        b !== block && 
-        this.dominates(block, b) &&
-        this.getImmediateDominator(b) === block
+      const children = Array.from(this.blocks.values()).filter(
+        (b) => b !== block && this.dominates(block, b) && this.getImmediateDominator(b) === block
       );
 
       for (const child of children.sort((a, b) => a.id - b.id)) {
@@ -1789,7 +2017,11 @@ export class NWScriptControlFlowGraph {
     const lines: string[] = [];
     lines.push(`Control Flow Graph for ${this.script.name || 'script'}`);
     lines.push(`Entry Block: ${this.entryBlock?.id ?? 'none'}`);
-    lines.push(`Exit Blocks: ${Array.from(this.exitBlocks).map(b => b.id).join(', ')}`);
+    lines.push(
+      `Exit Blocks: ${Array.from(this.exitBlocks)
+        .map((b) => b.id)
+        .join(', ')}`
+    );
     lines.push(`Total Blocks: ${this.blocks.size}`);
     lines.push(`Total Edges: ${this.edges.size}`);
     lines.push(`Back Edges: ${this.backEdges.size}`);
@@ -1800,13 +2032,25 @@ export class NWScriptControlFlowGraph {
       lines.push(block.toString());
       lines.push(`  Exit Type: ${block.exitType}`);
       lines.push(`  Depth: ${this.getBlockDepth(block)}`);
-      lines.push(`  Successors: ${Array.from(block.successors).map(b => b.id).join(', ')}`);
-      lines.push(`  Predecessors: ${Array.from(block.predecessors).map(b => b.id).join(', ')}`);
+      lines.push(
+        `  Successors: ${Array.from(block.successors)
+          .map((b) => b.id)
+          .join(', ')}`
+      );
+      lines.push(
+        `  Predecessors: ${Array.from(block.predecessors)
+          .map((b) => b.id)
+          .join(', ')}`
+      );
       if (block.isLoopHeader) {
         lines.push(`  Loop Header`);
         const loopBlocks = this.getNaturalLoop(block);
         if (loopBlocks.size > 0) {
-          lines.push(`  Natural Loop: ${Array.from(loopBlocks).map(b => b.id).join(', ')}`);
+          lines.push(
+            `  Natural Loop: ${Array.from(loopBlocks)
+              .map((b) => b.id)
+              .join(', ')}`
+          );
         }
       }
       if (block.isLoopBody) {
@@ -1835,7 +2079,7 @@ export class NWScriptControlFlowGraph {
       instructionSize: instr.instructionSize || 0,
       index: instr.index ?? -1,
       isArg: instr.isArg || false,
-      breakPoint: instr.break_point || false
+      breakPoint: instr.break_point || false,
     };
 
     // Add optional properties only if they exist and are not undefined
@@ -1860,7 +2104,7 @@ export class NWScriptControlFlowGraph {
         name: instr.actionDefinition.name,
         comment: instr.actionDefinition.comment,
         type: instr.actionDefinition.type,
-        args: instr.actionDefinition.args ? [...instr.actionDefinition.args] : []
+        args: instr.actionDefinition.args ? [...instr.actionDefinition.args] : [],
         // Note: action function is excluded to avoid circular references
       };
     }
@@ -1877,19 +2121,19 @@ export class NWScriptControlFlowGraph {
    */
   private serializeConditionExpression(expr: any): any {
     if (!expr) return null;
-    
+
     // Try to serialize if it's a simple object
     try {
       // If it has a toJSON method, use it
       if (typeof expr.toJSON === 'function') {
         return expr.toJSON();
       }
-      
+
       // If it's a simple object with primitive values, serialize it
       if (typeof expr === 'object' && expr !== null) {
         const keys = Object.keys(expr);
         if (keys.length === 0) return null;
-        
+
         // Check if it's a simple object (no functions, no circular refs)
         const simple: any = {};
         for (const key of keys) {
@@ -1907,7 +2151,7 @@ export class NWScriptControlFlowGraph {
         }
         return Object.keys(simple).length > 0 ? simple : null;
       }
-      
+
       return expr;
     } catch (e) {
       // If serialization fails, return a placeholder
@@ -1928,43 +2172,45 @@ export class NWScriptControlFlowGraph {
       script: {
         name: this.script.name || 'unnamed',
         totalInstructions: this.script.instructions?.size || 0,
-        instructionAddresses: Array.from(this.script.instructions?.keys() || []).sort((a, b) => a - b)
+        instructionAddresses: Array.from(this.script.instructions?.keys() || []).sort((a, b) => a - b),
       },
 
       // Graph structure
       graph: {
         entryBlockId: this.entryBlock?.id ?? null,
-        exitBlockIds: Array.from(this.exitBlocks).map(b => b.id).sort((a, b) => a - b),
+        exitBlockIds: Array.from(this.exitBlocks)
+          .map((b) => b.id)
+          .sort((a, b) => a - b),
         totalBlocks: this.blocks.size,
         totalEdges: this.edges.size,
         leaders: Array.from(this.leaders).sort((a, b) => a - b),
         jumpTargets: Array.from(this.jumpTargets).sort((a, b) => a - b),
-        storeStateJmpTargets: Array.from(this.storeStateJmpTargets).sort((a, b) => a - b)
+        storeStateJmpTargets: Array.from(this.storeStateJmpTargets).sort((a, b) => a - b),
       },
 
       // Subroutines and callbacks
       subroutines: {
         entries: Array.from(this.subroutineEntries.entries()).map(([addr, block]) => ({
           address: addr,
-          blockId: block.id
+          blockId: block.id,
         })),
         returns: Array.from(this.subroutineReturns.entries()).map(([jsrAddr, returnBlock]) => ({
           jsrAddress: jsrAddr,
-          returnBlockId: returnBlock?.id ?? null
+          returnBlockId: returnBlock?.id ?? null,
         })),
         callbacks: Array.from(this.callbackEntries.entries()).map(([entryAddr, info]) => ({
           entryAddress: entryAddr,
           storeStateAddress: info.storeStateAddress,
           savedGlobals: info.savedGlobals,
-          savedLocals: info.savedLocals
-        }))
+          savedLocals: info.savedLocals,
+        })),
       },
 
       // Graph metrics
       metrics: graphMetrics,
 
       // Complete block information
-      blocks: sortedBlocks.map(block => {
+      blocks: sortedBlocks.map((block) => {
         const immediateDominator = this.getImmediateDominator(block);
         const immediatePostDominator = this.getImmediatePostDominator(block);
         const parentLoop = this.getParentLoop(block);
@@ -1983,7 +2229,10 @@ export class NWScriptControlFlowGraph {
           addressRange: {
             start: block.startInstruction.address,
             end: block.endInstruction.address + (block.endInstruction.instructionSize || 0),
-            size: (block.endInstruction.address + (block.endInstruction.instructionSize || 0)) - block.startInstruction.address
+            size:
+              block.endInstruction.address +
+              (block.endInstruction.instructionSize || 0) -
+              block.startInstruction.address,
           },
           instructionCount: block.instructions.length,
 
@@ -1994,7 +2243,7 @@ export class NWScriptControlFlowGraph {
             isLoopHeader: block.isLoopHeader,
             isLoopBody: block.isLoopBody,
             isUnreachable: block.isUnreachable,
-            exitType: block.exitType
+            exitType: block.exitType,
           },
 
           // Control flow
@@ -2002,57 +2251,87 @@ export class NWScriptControlFlowGraph {
             depth: this.getBlockDepth(block),
             loopDepth: this.getLoopDepth(block),
             parentLoopId: parentLoop?.id ?? null,
-            childLoopIds: Array.from(childLoops).map(h => h.id).sort((a, b) => a - b),
-            naturalLoopBlockIds: naturalLoop ? Array.from(naturalLoop).map(b => b.id).sort((a, b) => a - b) : null,
-            successorIds: Array.from(block.successors).map(b => b.id).sort((a, b) => a - b),
-            predecessorIds: Array.from(block.predecessors).map(b => b.id).sort((a, b) => a - b)
+            childLoopIds: Array.from(childLoops)
+              .map((h) => h.id)
+              .sort((a, b) => a - b),
+            naturalLoopBlockIds: naturalLoop
+              ? Array.from(naturalLoop)
+                  .map((b) => b.id)
+                  .sort((a, b) => a - b)
+              : null,
+            successorIds: Array.from(block.successors)
+              .map((b) => b.id)
+              .sort((a, b) => a - b),
+            predecessorIds: Array.from(block.predecessors)
+              .map((b) => b.id)
+              .sort((a, b) => a - b),
           },
 
           // Dominance information
           dominance: {
-            dominatorIds: Array.from(block.dominators).map(b => b.id).sort((a, b) => a - b),
+            dominatorIds: Array.from(block.dominators)
+              .map((b) => b.id)
+              .sort((a, b) => a - b),
             immediateDominatorId: immediateDominator?.id ?? null,
-            postDominatorIds: Array.from(block.postDominators).map(b => b.id).sort((a, b) => a - b),
+            postDominatorIds: Array.from(block.postDominators)
+              .map((b) => b.id)
+              .sort((a, b) => a - b),
             immediatePostDominatorId: immediatePostDominator?.id ?? null,
-            dominanceFrontierIds: Array.from(dominanceFrontier).map(b => b.id).sort((a, b) => a - b)
+            dominanceFrontierIds: Array.from(dominanceFrontier)
+              .map((b) => b.id)
+              .sort((a, b) => a - b),
           },
 
           // Control dependence
           controlDependence: {
-            dependentBlockIds: Array.from(controlDependents).map(b => b.id).sort((a, b) => a - b)
+            dependentBlockIds: Array.from(controlDependents)
+              .map((b) => b.id)
+              .sort((a, b) => a - b),
           },
 
           // Reachability
           reachability: {
-            reachableFromIds: reachableFrom ? Array.from(reachableFrom).map(b => b.id).sort((a, b) => a - b) : [],
-            reachesToIds: reachesTo ? Array.from(reachesTo).map(b => b.id).sort((a, b) => a - b) : []
+            reachableFromIds: reachableFrom
+              ? Array.from(reachableFrom)
+                  .map((b) => b.id)
+                  .sort((a, b) => a - b)
+              : [],
+            reachesToIds: reachesTo
+              ? Array.from(reachesTo)
+                  .map((b) => b.id)
+                  .sort((a, b) => a - b)
+              : [],
           },
 
           // Edges (detailed)
-          edges: this.getOrderedSuccessors(block).map(succ => {
-            const edge = this.getEdge(block, succ);
-            if (!edge) return null;
-            return {
-              toBlockId: succ.id,
-              type: edge.type,
-              isBackEdge: edge.isBackEdge,
-              isCritical: edge.isCritical,
-              condition: edge.condition,
-              weight: edge.weight,
-              conditionExpression: this.serializeConditionExpression(edge.conditionExpression)
-            };
-          }).filter(e => e !== null),
+          edges: this.getOrderedSuccessors(block)
+            .map((succ) => {
+              const edge = this.getEdge(block, succ);
+              if (!edge) return null;
+              return {
+                toBlockId: succ.id,
+                type: edge.type,
+                isBackEdge: edge.isBackEdge,
+                isCritical: edge.isCritical,
+                condition: edge.condition,
+                weight: edge.weight,
+                conditionExpression: this.serializeConditionExpression(edge.conditionExpression),
+              };
+            })
+            .filter((e) => e !== null),
 
           // Instructions (detailed, safely serialized)
-          instructions: block.instructions.map(instr => this.serializeInstruction(instr)),
+          instructions: block.instructions.map((instr) => this.serializeInstruction(instr)),
 
           // Condition instruction (if applicable, safely serialized)
-          conditionInstruction: block.conditionInstruction ? this.serializeInstruction(block.conditionInstruction) : null
+          conditionInstruction: block.conditionInstruction
+            ? this.serializeInstruction(block.conditionInstruction)
+            : null,
         };
       }),
 
       // Complete edge information
-      edges: Array.from(this.orderedEdges).map(edge => ({
+      edges: Array.from(this.orderedEdges).map((edge) => ({
         fromBlockId: edge.from.id,
         toBlockId: edge.to.id,
         type: edge.type,
@@ -2060,83 +2339,97 @@ export class NWScriptControlFlowGraph {
         isCritical: edge.isCritical,
         condition: edge.condition,
         weight: edge.weight,
-        conditionExpression: edge.conditionExpression || null
+        conditionExpression: edge.conditionExpression || null,
       })),
 
       // Analysis results
       analysis: {
         // Back edges
-        backEdges: Array.from(this.backEdges).map(e => ({
+        backEdges: Array.from(this.backEdges).map((e) => ({
+          fromBlockId: e.from.id,
+          toBlockId: e.to.id,
+          type: e.type,
+        })),
+
+        procedureLatchEdges: Array.from(this.procedureLatchEdges).map(e => ({
           fromBlockId: e.from.id,
           toBlockId: e.to.id,
           type: e.type
         })),
 
         // Critical edges
-        criticalEdges: Array.from(this.criticalEdges).map(e => ({
+        criticalEdges: Array.from(this.criticalEdges).map((e) => ({
           fromBlockId: e.from.id,
           toBlockId: e.to.id,
-          type: e.type
+          type: e.type,
         })),
 
         // Natural loops
         naturalLoops: Array.from(this.naturalLoops.entries()).map(([header, loopBlocks]) => ({
           headerBlockId: header.id,
-          blockIds: Array.from(loopBlocks).map(b => b.id).sort((a, b) => a - b),
-          size: loopBlocks.size
+          blockIds: Array.from(loopBlocks)
+            .map((b) => b.id)
+            .sort((a, b) => a - b),
+          size: loopBlocks.size,
         })),
 
         // Loop nesting tree
         loopNestingTree: Array.from(this.loopNestingTree.entries()).map(([block, parent]) => ({
           blockId: block.id,
-          parentLoopHeaderId: parent?.id ?? null
+          parentLoopHeaderId: parent?.id ?? null,
         })),
 
         // Call and return edges
-        callEdges: Array.from(this.callEdges).map(e => ({
+        callEdges: Array.from(this.callEdges).map((e) => ({
           fromBlockId: e.from.id,
-          toBlockId: e.to.id
+          toBlockId: e.to.id,
         })),
-        returnEdges: Array.from(this.returnEdges).map(e => ({
+        returnEdges: Array.from(this.returnEdges).map((e) => ({
           fromBlockId: e.from.id,
-          toBlockId: e.to.id
+          toBlockId: e.to.id,
         })),
 
         // Unreachable blocks
-        unreachableBlockIds: this.getUnreachableBlocks().map(b => b.id).sort((a, b) => a - b),
+        unreachableBlockIds: this.getUnreachableBlocks()
+          .map((b) => b.id)
+          .sort((a, b) => a - b),
 
         // Cycles
-        cycles: this.getAllCycles().map(cycle => cycle.map(b => b.id)),
+        cycles: this.getAllCycles().map((cycle) => cycle.map((b) => b.id)),
 
         // Strongly connected components
-        stronglyConnectedComponents: this.getStronglyConnectedComponents().map(scc => 
-          Array.from(scc).map(b => b.id).sort((a, b) => a - b)
-        )
+        stronglyConnectedComponents: this.getStronglyConnectedComponents().map((scc) =>
+          Array.from(scc)
+            .map((b) => b.id)
+            .sort((a, b) => a - b)
+        ),
       },
 
       // Graph structure analysis
       structure: {
         isReducible: this.isReducible(),
-        irreducibleRegions: this.getIrreducibleRegions().map(region => 
-          Array.from(region).map(b => b.id).sort((a, b) => a - b)
+        irreducibleRegions: this.getIrreducibleRegions().map((region) =>
+          Array.from(region)
+            .map((b) => b.id)
+            .sort((a, b) => a - b)
         ),
-        mergeBlocks: sortedBlocks.filter(b => this.isMergeBlock(b)).map(b => b.id),
-        splitBlocks: sortedBlocks.filter(b => this.isSplitBlock(b)).map(b => b.id)
+        mergeBlocks: sortedBlocks.filter((b) => this.isMergeBlock(b)).map((b) => b.id),
+        splitBlocks: sortedBlocks.filter((b) => this.isSplitBlock(b)).map((b) => b.id),
       },
 
       // Topological information
       topological: {
-        dfsPreOrder: this.getDFSPreOrder().map(b => b.id),
-        dfsPostOrder: this.getDFSPostOrder().map(b => b.id),
-        topologicalOrder: this.getTopologicalOrder().map(b => b.id),
-        reversePostOrder: this.getReversePostOrder().map(b => b.id),
-        dominanceOrder: this.getDominanceOrder().map(b => b.id),
-        postDominanceOrder: this.getBlocksInPostDominanceOrder().map(b => b.id),
+        dfsPreOrder: this.getDFSPreOrder().map((b) => b.id),
+        dfsPostOrder: this.getDFSPostOrder().map((b) => b.id),
+        topologicalOrder: this.getTopologicalOrder().map((b) => b.id),
+        reversePostOrder: this.getReversePostOrder().map((b) => b.id),
+        dominanceOrder: this.getDominanceOrder().map((b) => b.id),
+        postDominanceOrder: this.getBlocksInPostDominanceOrder().map((b) => b.id),
         blocksByDepth: Array.from(this.getBlocksByDepth().entries()).map(([depth, blocks]) => ({
           depth,
-          blockIds: blocks.map(b => b.id).sort((a, b) => a - b)
-        }))
-      }
+          blockIds: blocks.map((b) => b.id).sort((a, b) => a - b),
+        })),
+      },
     };
   }
 
@@ -2154,14 +2447,14 @@ export class NWScriptControlFlowGraph {
     }
 
     for (const block of this.blocks.values()) {
-      // For each predecessor of block
+      const blockIdom = this.getImmediateDominator(block);
       for (const pred of block.predecessors) {
-        let runner = pred;
-        // Walk up the dominator tree until we reach block's immediate dominator
-        while (runner !== block && runner !== this.getImmediateDominator(block)) {
-          if (runner) {
-            this.dominanceFrontiers.get(runner)!.add(block);
+        let runner: NWScriptBasicBlock | null = pred;
+        while (runner) {
+          if (runner === block || runner === blockIdom) {
+            break;
           }
+          this.dominanceFrontiers.get(runner)!.add(block);
           runner = this.getImmediateDominator(runner);
         }
       }
@@ -2180,8 +2473,8 @@ export class NWScriptControlFlowGraph {
    * This is the union of dominance frontiers, iterated until fixed point
    */
   getIteratedDominanceFrontier(blocks: Set<NWScriptBasicBlock>): Set<NWScriptBasicBlock> {
-    let df = new Set<NWScriptBasicBlock>();
-    let worklist = new Set(blocks);
+    const df = new Set<NWScriptBasicBlock>();
+    const worklist = new Set(blocks);
 
     while (worklist.size > 0) {
       const current = Array.from(worklist)[0];
@@ -2261,7 +2554,7 @@ export class NWScriptControlFlowGraph {
     }
 
     const reverse = new NWScriptControlFlowGraph(this.script);
-    
+
     // Copy all blocks
     for (const block of this.blocks.values()) {
       reverse.blocks.set(block.id, block);
@@ -2344,10 +2637,10 @@ export class NWScriptControlFlowGraph {
    */
   getChildLoops(header: NWScriptBasicBlock): Set<NWScriptBasicBlock> {
     const children = new Set<NWScriptBasicBlock>();
-    
+
     for (const [otherHeader, loopBlocks] of this.naturalLoops) {
       if (otherHeader === header) continue;
-      
+
       // Check if otherHeader's loop is nested within header's loop
       const headerLoop = this.naturalLoops.get(header);
       if (headerLoop && headerLoop.has(otherHeader)) {
@@ -2464,7 +2757,7 @@ export class NWScriptControlFlowGraph {
       loopCount: this.naturalLoops.size,
       unreachableBlocks: this.getUnreachableBlocks().length,
       criticalEdges: this.criticalEdges.size,
-      backEdges: this.backEdges.size
+      backEdges: this.backEdges.size,
     };
   }
 
@@ -2497,10 +2790,8 @@ export class NWScriptControlFlowGraph {
       visited.add(block);
 
       // Visit post-dominator children first
-      const children = Array.from(this.blocks.values()).filter(b =>
-        b !== block &&
-        this.postDominates(block, b) &&
-        this.getImmediatePostDominator(b) === block
+      const children = Array.from(this.blocks.values()).filter(
+        (b) => b !== block && this.postDominates(block, b) && this.getImmediatePostDominator(b) === block
       );
 
       for (const child of children.sort((a, b) => a.id - b.id)) {
@@ -2550,7 +2841,11 @@ export class NWScriptControlFlowGraph {
   /**
    * Find all paths avoiding certain blocks
    */
-  findAllPathsAvoiding(from: NWScriptBasicBlock, to: NWScriptBasicBlock, avoidBlocks: Set<NWScriptBasicBlock>): NWScriptBasicBlock[][] {
+  findAllPathsAvoiding(
+    from: NWScriptBasicBlock,
+    to: NWScriptBasicBlock,
+    avoidBlocks: Set<NWScriptBasicBlock>
+  ): NWScriptBasicBlock[][] {
     const paths: NWScriptBasicBlock[][] = [];
     const currentPath: NWScriptBasicBlock[] = [];
     const visited = new Set<NWScriptBasicBlock>();
@@ -2663,33 +2958,28 @@ export class NWScriptControlFlowGraph {
    */
   isInCycle(block: NWScriptBasicBlock): boolean {
     const cycles = this.getAllCycles();
-    return cycles.some(cycle => cycle.includes(block));
+    return cycles.some((cycle) => cycle.includes(block));
   }
 
   /**
    * Get ordered successors (by address)
    */
   getOrderedSuccessors(block: NWScriptBasicBlock): NWScriptBasicBlock[] {
-    return Array.from(block.successors).sort((a, b) => 
-      a.startInstruction.address - b.startInstruction.address
-    );
+    return Array.from(block.successors).sort((a, b) => a.startInstruction.address - b.startInstruction.address);
   }
 
   /**
    * Get ordered predecessors (by address)
    */
   getOrderedPredecessors(block: NWScriptBasicBlock): NWScriptBasicBlock[] {
-    return Array.from(block.predecessors).sort((a, b) =>
-      a.startInstruction.address - b.startInstruction.address
-    );
+    return Array.from(block.predecessors).sort((a, b) => a.startInstruction.address - b.startInstruction.address);
   }
 
   /**
    * Get all blocks in deterministic order (by start address)
    */
   getBlocksInOrder(): NWScriptBasicBlock[] {
-    return Array.from(this.blocks.values())
-      .sort((a, b) => a.startInstruction.address - b.startInstruction.address);
+    return Array.from(this.blocks.values()).sort((a, b) => a.startInstruction.address - b.startInstruction.address);
   }
 
   /**
@@ -2715,7 +3005,9 @@ export class NWScriptControlFlowGraph {
   }
 
   /**
-   * Get intra-procedural predecessors (excluding RETURN edges)
+   * Intra-procedural predecessors for dominance and similar walks.
+   * Includes {@link EdgeType.RETURN} (JSR → linear successor): those edges must be predecessors
+   * or dominators break for all code after the first subroutine call.
    * @param block The block to get predecessors for
    * @param excludeCall Whether to also exclude CALL edges (default: false)
    */
@@ -2724,9 +3016,6 @@ export class NWScriptControlFlowGraph {
     for (const pred of this.getOrderedPredecessors(block)) {
       const edge = this.getEdge(pred, block);
       if (edge) {
-        if (edge.type === EdgeType.RETURN) {
-          continue; // Skip return edges
-        }
         if (excludeCall && edge.type === EdgeType.CALL) {
           continue; // Skip call edges if requested
         }
@@ -2765,11 +3054,9 @@ export class NWScriptControlFlowGraph {
   }
 
   /**
-   * Check if CFG is reducible
-   * A reducible CFG can be reduced to a single node by repeatedly:
-   * - Removing self-loops
-   * - Merging nodes with single predecessor
-   * - Removing nodes with no predecessors (except entry)
+   * Check if CFG is reducible (diagnostic / exploratory; not used by the decompiler pipeline).
+   * The reduction phase below uses placeholder merge logic — do not rely on this result for
+   * correctness decisions until the merge step is fully implemented.
    */
   isReducible(): boolean {
     // A CFG is reducible if all loops are natural loops (have a single entry point)
@@ -2816,25 +3103,25 @@ export class NWScriptControlFlowGraph {
    */
   getIrreducibleRegions(): Set<NWScriptBasicBlock>[] {
     const regions: Set<NWScriptBasicBlock>[] = [];
-    
+
     if (this.isReducible()) {
       return regions;
     }
 
     // Find strongly connected components that are not natural loops
     const sccs = this.getStronglyConnectedComponents();
-    
+
     for (const scc of sccs) {
       if (scc.size > 1) {
         // Check if this SCC is a natural loop
         let isNaturalLoop = false;
         for (const [header, loopBlocks] of this.naturalLoops) {
-          if (scc.has(header) && Array.from(scc).every(b => loopBlocks.has(b))) {
+          if (scc.has(header) && Array.from(scc).every((b) => loopBlocks.has(b))) {
             isNaturalLoop = true;
             break;
           }
         }
-        
+
         if (!isNaturalLoop) {
           regions.push(scc);
         }
@@ -2902,12 +3189,12 @@ export class NWScriptControlFlowGraph {
    */
   static fromJSON(json: any, script: NWScript): NWScriptControlFlowGraph {
     const cfg = new NWScriptControlFlowGraph(script);
-    
+
     // Note: This is a simplified deserialization
     // Full deserialization would require reconstructing instructions and blocks
     // For now, we'll just rebuild the CFG from the script
     cfg.build();
-    
+
     return cfg;
   }
 }
