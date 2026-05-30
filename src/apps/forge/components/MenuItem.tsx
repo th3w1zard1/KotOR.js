@@ -14,21 +14,23 @@ export const MenuItem = function(props: any){
   };
 
   useEffectOnce( () => { //constructor
-    if (item) {
+    if(item){
       item.addEventListener('onRebuild', onRebuild);
       return () => { //deconstructor
         item.removeEventListener('onRebuild', onRebuild);
-      };
+      }
     }
   });
 
   const onClick = (e: React.MouseEvent<HTMLElement, MouseEvent>) => {
-    if (item && typeof item.onClick === 'function'){
+    if(item && typeof item.onClick === 'function'){
       item.onClick(e, item);
     }
-  };
+  }
 
-  if (!item) return null;
+  if(!item){
+    return null;
+  }
 
   const renderItemName = () => {
     return (
@@ -42,25 +44,18 @@ export const MenuItem = function(props: any){
     return (
       <Dropdown.Divider></Dropdown.Divider>
     );
-<<<<<<< HEAD
-  }else if(item.items?.length){
-    return (
-      <NavDropdown title={item.name}>
-        {item.items.map((child: any, i: number) =>
-=======
   }else if(item.type === 'title'){
     return (
       <Dropdown.Header className="forge-menu-title">{item.name}</Dropdown.Header>
     );
-  }else if(item.items.length){
+  }else if(item.items?.length){
     return (
       <NavDropdown
         title={item.name}
         drop={parent ? 'end' : 'down'}
         className={parent ? 'forge-menu-submenu' : 'forge-menu-root-item'}
       >
-        {item.items.map((child: any, i: any) => 
->>>>>>> upstream/master
+        {item.items.map((child: any, i: number) => 
           (
             <MenuItem key={`menu-item-${child?.uuid ?? child?.name ?? i}`} item={child} parent={item}></MenuItem>
           )

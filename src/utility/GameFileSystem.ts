@@ -256,15 +256,14 @@ export class GameFileSystem {
     return new Promise<boolean>( (resolve) => {
       fs.stat(path.join(ApplicationProfile.directory, resource_path), (err, stats) => {
         if(err){
-          // ENOENT = path does not exist (e.g. optional game folders like StreamVoice in K1)
           if (err.code !== 'ENOENT') {
             console.error(err);
           }
           resolve(false);
           return;
         }
-        resolve((stats.mode & fs.constants.S_IFDIR) === fs.constants.S_IFDIR);
-      });
+        resolve((stats.mode & fs.constants.S_IFDIR) === fs.constants.S_IFDIR)
+      })
     });
   }
 
@@ -272,26 +271,18 @@ export class GameFileSystem {
     if(typeof depthState === 'undefined'){
       depthState = { folder: resource_path, depth: 0 };
     }
-<<<<<<< HEAD
-    return new Promise<string[]>( async (resolve, reject) => {
-      try{
-        const exists = await this.exists(resource_path);
-        if (!exists) {
-          resolve(files);
-          return;
-        }
-        let dir_path = path.join(ApplicationProfile.directory, resource_path);
-
-        if(!(await this.isFSDirectory(resource_path))){
-=======
     const currentDepth: number = depthState.depth;
     const dir_path = path.join(ApplicationProfile.directory, resource_path);
 
-    return new Promise<string[]>((resolve, reject) => {
+    return new Promise<string[]>(async (resolve, reject) => {
+      const exists = await this.exists(resource_path);
+      if (!exists) {
+        resolve(files);
+        return;
+      }
       fs.readdir(dir_path, { withFileTypes: true }, async (err, dir_files: fs.Dirent[]) => {
         if(err){
           // resource_path is a file, not a directory
->>>>>>> upstream/master
           if(!opts.list_dirs){
             files.push(resource_path);
           }

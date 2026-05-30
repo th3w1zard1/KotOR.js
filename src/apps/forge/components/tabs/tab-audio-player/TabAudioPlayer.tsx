@@ -25,27 +25,15 @@ const VISUAL_MAX_H = 320;
 
 export const TabAudioPlayer = function (props: BaseTabProps) {
   const tab = props.tab as TabAudioPlayerState;
-<<<<<<< HEAD
-  
-  // Use useRef for mutable variables that we want to persist
-  // without triggering a re-render on their change
-=======
 
->>>>>>> upstream/master
   const requestRef = useRef<number | undefined>(undefined);
   const previousTimeRef = useRef<number | undefined>(undefined);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
-<<<<<<< HEAD
-  
-  const [isReady, setIsReady] = useState<boolean>(false);
-  const [isDisposed, setIsDisposed] = useState<boolean>(false);
-=======
   const visualRef = useRef<HTMLDivElement>(null);
   const visualIdRef = useRef<TabAudioVisualId>("spectrum");
   const hyperspaceStateRef = useRef<HyperspaceVizState | null>(null);
 
->>>>>>> upstream/master
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);

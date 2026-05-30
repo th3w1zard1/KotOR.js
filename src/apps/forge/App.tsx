@@ -1,19 +1,3 @@
-<<<<<<< HEAD
-import React, { useState, useEffect } from "react";
-import TabManager from "./components/tabs/TabManager";
-import { TabManagerProvider } from "./context/TabManagerContext";
-import { ForgeState } from "./states/ForgeState";
-import { MenuTop } from "./components/MenuTop";
-import { LayoutContainerProvider } from "./context/LayoutContainerContext";
-import { LayoutContainer } from "./components/LayoutContainer/LayoutContainer";
-import ModalGrantAccess from "./components/modal/ModalGrantAccess";
-import { ModalChangeGame } from "./components/modal/ModalChangeGame";
-import { useEffectOnce } from "./helpers/UseEffectOnce";
-import { useApp } from "./context/AppContext";
-import { ModalManager } from "./components/modal/ModalManager";
-import { LoadingScreen } from "../common/components/loadingScreen/LoadingScreen";
-import { CommandPalette } from "./components/CommandPalette";
-=======
 import React, { useState, useCallback, useRef } from "react";
 import * as fs from "fs";
 import * as nodePath from "path";
@@ -37,14 +21,12 @@ import { TabQuickStartState } from "@/apps/forge/states/tabs/TabQuickStartState"
 import { ForgeFloatingMiniPlayer } from "@/apps/forge/components/ForgeFloatingMiniPlayer";
 import forgeIcon from "@/assets/icons/icon.png";
 import * as KotOR from "@/KotOR";
->>>>>>> upstream/master
 
 export const App = (props: any) => {
 
   const appContext = useApp();
   const [appReady, setAppReady] = appContext.appReady;
   const [showGrantModal, setShowGrantModal] = appContext.showGrantModal;
-  const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showLoadingScreen] = appContext.showLoadingScreen;
   const [loadingScreenMessage] = appContext.loadingScreenMessage;
   const [loadingScreenBackgroundURL] = appContext.loadingScreenBackgroundURL;
@@ -101,17 +83,6 @@ export const App = (props: any) => {
     }
   });
 
-<<<<<<< HEAD
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'p' || e.key === 'P')) {
-        e.preventDefault();
-        setShowCommandPalette(true);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-=======
   const onDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     if (!isFileDragEvent(e)) {
       return;
@@ -355,11 +326,10 @@ export const App = (props: any) => {
         }
       }
     }
->>>>>>> upstream/master
   }, []);
 
   const westContent = (
-    <div id="tabs-explorer">
+    <div id="tabs-explorer" style={{position: 'absolute', top: 0, left: 0, right: 0, bottom: 0}}>
       <TabManagerProvider manager={ForgeState.explorerTabManager}>
         <TabManager></TabManager>
       </TabManagerProvider>
@@ -383,9 +353,6 @@ export const App = (props: any) => {
 
   return (
     <>
-<<<<<<< HEAD
-      <div id="app" className={appReady ? 'app-ready' : ''}>
-=======
       <div
         id="app"
         style={{ opacity: (appReady) ? '1': '0' }}
@@ -394,7 +361,6 @@ export const App = (props: any) => {
         onDragOver={onDragOver}
         onDrop={onDrop}
       >
->>>>>>> upstream/master
         <MenuTop />
         <div id="container">
           <LayoutContainerProvider>
@@ -406,9 +372,6 @@ export const App = (props: any) => {
           </LayoutContainerProvider>
         </div>
         <ModalChangeGame></ModalChangeGame>
-<<<<<<< HEAD
-      <CommandPalette show={showCommandPalette} onHide={() => setShowCommandPalette(false)} />
-=======
         <ForgeFloatingMiniPlayer />
         {isDragOver && (
           <div className="drag-drop-overlay">
@@ -418,7 +381,6 @@ export const App = (props: any) => {
             </div>
           </div>
         )}
->>>>>>> upstream/master
       </div>
       <ModalManager manager={ForgeState.modalManager}></ModalManager>
       <ModalGrantAccess onUserGrant={onUserGrant} onUserCancel={onUserCancel}></ModalGrantAccess>

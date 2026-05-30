@@ -66,15 +66,12 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
   const tab = props.tab;
   const waveformCanvasRef = useRef<HTMLCanvasElement>(null);
   const seekerRef = useRef<HTMLDivElement>(null);
-<<<<<<< HEAD
-=======
   const keyframeBarRef = useRef<HTMLDivElement>(null);
   const drawWaveformRef = useRef<() => void>(() => {});
   const durationDragRef = useRef<{ active: boolean; startX: number; startDuration: number }>({
     active: false, startX: 0, startDuration: 0,
   });
   const zoomRef = useRef<number>(tab.timeline_zoom);
->>>>>>> upstream/master
   const [playing, setPlaying] = useState<boolean>(tab.playing);
   const [seekPositionLeft, setSeekPositionLeft] = useState<number>(0);
   const [zoom, setZoom] = useState<number>(tab.timeline_zoom);
@@ -121,22 +118,6 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
               let min = 1;
               let max = -1;
 
-<<<<<<< HEAD
-          canvas.height = height;
-          canvas.width = tab.audio_buffer.duration * tab.timeline_zoom;
-
-          let width = canvas.width;
-          ctx.strokeStyle = '#5bc0de';
-          ctx.fillStyle = 'rgba(0, 0, 0, 0)';
-          ctx.fillRect(0, 0, width, height);
-          ctx.beginPath();
-          ctx.moveTo(0,height/2);
-          for (i = 0; i < len; i++) {
-            ctx.lineTo(
-              /* X */ ((i*width) / len),
-              /* Y */ ((samples[i]*height/2)+height/2),
-            );
-=======
               for(let i = start; i < end; i++){
                 const sample = samples[i];
                 if(sample < min) min = sample;
@@ -149,7 +130,6 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
 
             ctx.stroke();
             ctx.closePath();
->>>>>>> upstream/master
           }
         }
       }
@@ -262,11 +242,11 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
 
   useEffect( () => {
     let _timelineScaleFactor = timelineScaleFactor;
-
+  
     if(zoom < 250){
       _timelineScaleFactor = 30;
     }
-
+  
     if(zoom <= 150){
       _timelineScaleFactor = 60;
     }
@@ -345,7 +325,7 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
         if(seekPosition > keyframeWindowElement.clientWidth + keyframeWindowElement.scrollLeft){
           keyframeWindowElement.scrollLeft = (seekPosition - 50);
         }
-
+    
         if(seekPosition < keyframeWindowElement.scrollLeft){
           keyframeWindowElement.scrollLeft = (seekPosition - 50);
         }
@@ -370,7 +350,7 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
       const bRect = keyframeWindowElement.getBoundingClientRect();
 
       let maxPixels = (tab.lip.duration * tab.timeline_zoom);
-
+      
       let position = (e.pageX - bRect.left + keyframeWindowElement.scrollLeft);
       if(position < 0) return 0;
       if(position > maxPixels) return maxPixels;
@@ -394,7 +374,7 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
       let position = getTimelinePixelPositionRelativeToMouseEvent(e);
       let time = getTimelinePixelPositionAsTime(position);
       tab.seek(time);
-
+      
       const seekPosition = (tab.lip.elapsed * tab.timeline_zoom);
       setSeekPositionLeft(seekPosition);
     }
@@ -420,7 +400,7 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
     updateScrollBoundsFocus(true);
   }
 
-  const onKeyFrameMouseDown = (e: React.MouseEvent<HTMLElement>, keyframe: KotOR.ILIPKeyFrame) => {
+  const onKeyFrameMouseDown = (e: React.MouseEvent<HTMLDivElement>, keyframe: KotOR.ILIPKeyFrame) => {
     e.stopPropagation();
     e.preventDefault();
     tab.captureUndoSnapshot();
@@ -429,7 +409,7 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
     tab.dragging_frame = keyframe;
   }
 
-  const onKeyFrameMouseUp = (e: React.MouseEvent<HTMLElement>, keyframe: KotOR.ILIPKeyFrame) => {
+  const onKeyFrameMouseUp = (e: React.MouseEvent<HTMLDivElement>, keyframe: KotOR.ILIPKeyFrame) => {
     e.stopPropagation();
     e.preventDefault();
     if(tab.dragging_frame){
@@ -467,20 +447,11 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
     let time = getTimelinePixelPositionAsTime(position);
     if(tab.scrubbing){
       tab.seek(time);
-
+      
       const seekPosition = (tab.lip.elapsed * tab.timeline_zoom);
       setSeekPositionLeft(seekPosition);
-<<<<<<< HEAD
-
-      tab.play(0.05);
-      clearTimeout(tab.scrubbingTimeout);
-      tab.scrubbingTimeout = setTimeout( () => {
-        // tab.pause();
-      }, 25);
-=======
->>>>>>> upstream/master
     }
-
+    
     if(tab.dragging_frame){
       tab.dragging_frame.time = time;
       setKeyFrames([...tab.lip.keyframes]);
@@ -697,36 +668,6 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
                   left: ((timelineScaleFactor / 60) * index) * zoom,
                   width: 30,
                   marginLeft: -15,
-<<<<<<< HEAD
-                  textAlign: 'center'
-                }}>{label}</span>
-              )
-            })
-          }
-        </div>
-        <div className="keyframe-track" style={{width: (duration * zoom)}}>
-          {
-            (
-              keyframes.length ? keyframes.map(
-                (keyframe: KotOR.ILIPKeyFrame, index: number) => {
-                  //onStart={(e) => handleStart(e, 'north') } onStop={(e) => handleStop(e, 'north') }
-                  return (
-                    <div key={`${keyframe.uuid}`} className={`keyframe ${selectedFrame == keyframe ? 'selected' : ''}`} style={{left: (keyframe.time * zoom)}}
-                      onClick={(e: React.MouseEvent<HTMLElement>) => onKeyFrameMouseUp(e, keyframe)}
-                      onMouseDown={(e: React.MouseEvent<HTMLElement>) => onKeyFrameMouseDown(e, keyframe)}
-                      onMouseUp={(e: React.MouseEvent<HTMLElement>) => onKeyFrameMouseUp(e, keyframe)}
-                    >
-                      <i className="fa-solid fa-diamond"></i>
-                    </div>
-                  )
-                })
-              : <></>
-            )
-          }
-        </div>
-        <div ref={seekerRef} className="keyframe-track-seeker" style={{left: seekPositionLeft}}>
-          <div className="seeker-thumb">
-=======
                   textAlign: "center",
                 }}
               >
@@ -734,7 +675,6 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
               </span>
             ))}
           </div>
->>>>>>> upstream/master
 
           {/* Waveform */}
           <div className="lip-keyframe-wave" style={{ width: waveformWidthPx }}>
@@ -789,15 +729,6 @@ export const UILIPKeyFramePanel = function(props: UILIPKeyFramePanelProps){
   );
 }
 
-<<<<<<< HEAD
-export const UILIPUtilitiesControl = function(props: { tab: TabLIPEditorState }){
-  const tab = props.tab;
-  return (
-    <TabManagerProvider manager={tab.utilitiesTabManager}>
-      <TabManager></TabManager>
-    </TabManagerProvider>
-  );
-=======
 export interface UILIPUtilitiesControlProps {
   tab: TabLIPEditorState;
 }
@@ -805,5 +736,4 @@ export interface UILIPUtilitiesControlProps {
 export const UILIPUtilitiesControl = function(props: UILIPUtilitiesControlProps){
   const tab = props.tab;
   return <TabLIPEditorOptions tab={tab.lipOptionsTab} parentTab={tab} />;
->>>>>>> upstream/master
 }

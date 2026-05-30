@@ -75,16 +75,10 @@ export const ResourceListNode = memo(function ResourceListNode(props: ResourceLi
         isSelected={false}
         onSelect={onSelect}
         onContextMenu={onContextMenu}
-<<<<<<< HEAD
-      />
-    ));
-  }, [openState, hasChildren, node.nodes, depth, onSelect, onContextMenu]);
-=======
         onToggleNode={onToggleNode}
       />
     ));
   }, [openState, hasChildren, node.nodes, depth, onSelect, onContextMenu, onToggleNode]);
->>>>>>> upstream/master
 
   // Prepare data attributes for the core component
   const dataAttributes = {

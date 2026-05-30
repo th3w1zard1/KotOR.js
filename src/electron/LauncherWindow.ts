@@ -57,11 +57,7 @@ export class LauncherWindow {
       // this.browserWindow = undefined;
     });
   
-<<<<<<< HEAD
-    this.browserWindow.on('minimize', () => {
-=======
     this.browserWindow.on('minimize',() => {
->>>>>>> upstream/master
       if(this.browserWindow) this.browserWindow.hide();
     });
   

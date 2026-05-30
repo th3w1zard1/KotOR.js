@@ -1,7 +1,5 @@
 {
   "compilerOptions": {
-<<<<<<< HEAD
-=======
     "baseUrl": ".",
     "moduleResolution": "node",
     "target": "ESNext",
@@ -18,15 +16,8 @@
     "strictNullChecks": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
->>>>>>> upstream/master
     "allowJs": true,
-    "declaration": false,
-    "esModuleInterop": true,
-    "experimentalDecorators": true,
-    "forceConsistentCasingInFileNames": true,
     "jsx": "react",
-<<<<<<< HEAD
-=======
     "paths": {
       "@/*": [
         "src/*"
@@ -38,45 +29,13 @@
       "node",
       "offscreencanvas",
     ],
->>>>>>> upstream/master
     "lib": [
       "ESNext",
       "dom",
       "WebWorker"
     ],
-    "listFiles": true,
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "newLine": "LF",
-    "noEmitOnError": true,
-    "noImplicitAny": true,
     "outDir": "dist",
-    "removeComments": true,
-    "rootDir": ".",
-    "skipLibCheck": true,
-    "sourceMap": false,
-    "strict": true,
-    "strictNullChecks": false,
-    "target": "ESNext",
-    "types": [
-      "@types/wicg-file-system-access",
-      "user-agent-data-types",
-      "node",
-      "offscreencanvas",
-    ]
   },
-<<<<<<< HEAD
-  "exclude": [
-    "node_modules",
-    "src/**/*.spec.ts"
-  ],
-  "include": [
-    "src/KotOR.ts",
-    "src/types",
-    "src/index.d.ts"
-  ]
-=======
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/index.d.ts"],
   "exclude": ["node_modules", "src/**/*.spec.ts"]
->>>>>>> upstream/master
 }

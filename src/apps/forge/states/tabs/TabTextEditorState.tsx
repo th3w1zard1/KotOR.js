@@ -1,25 +1,4 @@
 import React from "react";
-<<<<<<< HEAD
-import { TabTextEditor } from "../../components/tabs/tab-text-editor/TabTextEditor";
-import BaseTabStateOptions from "../../interfaces/BaseTabStateOptions";
-import { TabState } from "./TabState";
-import { EditorFile } from "../../EditorFile";
-import { EditorTabManager } from "../../managers/EditorTabManager";
-import { ForgeState } from "../ForgeState";
-// import { NWScriptCompiler } from "../../../../nwscript/NWScriptCompiler";
-import { NWScriptParser } from "../../../../nwscript/compiler/NWScriptParser";
-import { TabScriptCompileLogState, TabScriptErrorLogState, TabScriptInspectorState, TabScriptFindReferencesState, TextReferenceMatch } from ".";
-import * as monacoEditor from "monaco-editor/esm/vs/editor/editor.api";
-
-import * as KotOR from "../../KotOR";
-import { NWScriptCompiler } from "../../../../nwscript/compiler/NWScriptCompiler";
-import { NWScriptLanguageService } from "../NWScriptLanguageService";
-import { LYTLanguageService } from "../LYTLanguageService";
-import { SemanticFunctionNode } from "../../../../nwscript/compiler/ASTSemanticTypes";
-import { findAllReferencesInText, getWordAtIndex, createKeyResources, findScriptReferences, findStrRefReferences, findConversationReferences } from "../../helpers/ReferenceFinder";
-import { ModalFileResultsState } from "../modal/ModalFileResultsState";
-import { ModalReferenceSearchOptionsState } from "../modal/ModalReferenceSearchOptionsState";
-=======
 import { TabTextEditor } from "@/apps/forge/components/tabs/tab-text-editor/TabTextEditor";
 import BaseTabStateOptions from "@/apps/forge/interfaces/BaseTabStateOptions";
 import { TabState } from "@/apps/forge/states/tabs/TabState";
@@ -41,7 +20,6 @@ import { LYTLanguageService } from "@/apps/forge/states/LYTLanguageService";
 import { TXILanguageService } from "@/apps/forge/states/TXILanguageService";
 import { SemanticFunctionNode } from "@/nwscript/compiler/ASTSemanticTypes";
 import { compileNssSource, resolveIncludesForNss } from "@/apps/forge/helpers/ForgeNWScriptCompile";
->>>>>>> upstream/master
 
 export class TabTextEditorState extends TabState {
 
@@ -56,7 +34,6 @@ export class TabTextEditorState extends TabState {
   #tabErrorLogState: TabScriptErrorLogState;
   #tabCompileLogState: TabScriptCompileLogState;
   #tabScriptInspectorState: TabScriptInspectorState;
-  #tabFindReferencesState: TabScriptFindReferencesState;
   editor: monacoEditor.editor.IStandaloneCodeEditor;
   diffEditor: monacoEditor.editor.IStandaloneDiffEditor | null = null;
   monaco: typeof monacoEditor;
@@ -70,16 +47,12 @@ export class TabTextEditorState extends TabState {
   tabSize: number = 2;
   manualLanguageId: string | null = null; // Override for manual language selection
 
-  bookmarks: { line: number; description: string }[] = [];
-  snippets: { name: string; content: string }[] = [];
-  bookmarkDecorations: string[] = [];
-
   getLanguageId(): string {
     // Use manual override if set
     if(this.manualLanguageId) {
       return this.manualLanguageId;
     }
-
+    
     // Otherwise, detect from file extension
     if(!this.file) return 'plaintext';
     const ext = this.file.ext?.toLowerCase();
@@ -102,10 +75,10 @@ export class TabTextEditorState extends TabState {
 
   setLanguageId(languageId: string | null): void {
     this.manualLanguageId = languageId;
-
+    
     const finalLanguageId = this.getLanguageId();
     const finalTheme = this.getTheme();
-
+    
     // Update editor model language if editor exists
     if(this.editor && this.monaco) {
       const model = this.editor.getModel();
@@ -115,14 +88,14 @@ export class TabTextEditorState extends TabState {
       // Update theme
       this.monaco.editor.setTheme(finalTheme);
     }
-
+    
     // Update diff editor models if in diff mode
     if(this.isDiffMode && this.originalModel && this.modifiedModel && this.monaco) {
       this.monaco.editor.setModelLanguage(this.originalModel, finalLanguageId);
       this.monaco.editor.setModelLanguage(this.modifiedModel, finalLanguageId);
       this.monaco.editor.setTheme(finalTheme);
     }
-
+    
     // Trigger linter with new language
     this.triggerLinterTimeout();
   }
@@ -148,23 +121,18 @@ export class TabTextEditorState extends TabState {
       this.tabName = this.file.getFilename();
     }
 
-
+    
     this.#tabErrorLogState = new TabScriptErrorLogState( { parentTab: this } );
     this.#tabCompileLogState = new TabScriptCompileLogState( { parentTab: this } );
     this.#tabScriptInspectorState = new TabScriptInspectorState( { parentTab: this } );
-    this.#tabFindReferencesState = new TabScriptFindReferencesState( { parentTab: this } );
     this.#southTabManager.addTab( this.#tabErrorLogState );
     this.#southTabManager.addTab( this.#tabCompileLogState );
     this.#southTabManager.addTab( this.#tabScriptInspectorState );
-    this.#southTabManager.addTab( this.#tabFindReferencesState );
 
     this.setContentView(<TabTextEditor tab={this}></TabTextEditor>);
     const textDecoder = new TextDecoder();
-    const nwScriptBuffer = ForgeState.nwscript_nss ?? new Uint8Array(0);
-    this.nwScriptParser = new NWScriptParser(textDecoder.decode(nwScriptBuffer));
+    this.nwScriptParser = new NWScriptParser(textDecoder.decode(ForgeState.nwscript_nss));
     this.openFile();
-
-    this.loadSnippets();
 
     this.saveTypes = [
       {
@@ -206,7 +174,6 @@ export class TabTextEditorState extends TabState {
             this.code = this.nwScript.decompile(this.ncs);
             this.getSouthTabManager().getTabByType('TabScriptInspectorState')?.show();
             this.triggerLinterTimeout();
-            this.loadBookmarks();
             this.processEventListener('onEditorFileLoad');
             resolve();
           });
@@ -215,9 +182,7 @@ export class TabTextEditorState extends TabState {
             let decoder = new TextDecoder('utf8');
             this.code = decoder.decode(response.buffer);
             this.triggerLinterTimeout();
-
-            this.loadBookmarks();
-
+            
             this.processEventListener('onEditorFileLoad');
             resolve();
           });
@@ -240,69 +205,9 @@ export class TabTextEditorState extends TabState {
     this.triggerLinterTimeout();
   }
 
-  getWordAtCursor(): string {
-    if (this.editor && this.monaco) {
-      const position = this.editor.getPosition();
-      const model = this.editor.getModel();
-      if (position && model) {
-        const word = model.getWordAtPosition(position);
-        return word?.word || "";
-      }
-    }
-
-    if (this.code) {
-      return getWordAtIndex(this.code, Math.max(0, (this.code.length || 1) - 1));
-    }
-
-    return "";
-  }
-
-  findAllReferencesInFile(searchTerm?: string): TextReferenceMatch[] {
-    const term = (searchTerm ?? this.getWordAtCursor() ?? "").trim();
-    if (!term) {
-      this.#tabFindReferencesState.setResults("", []);
-      return [];
-    }
-
-    const matches = findAllReferencesInText(this.code || "", term);
-    this.#tabFindReferencesState.setResults(term, matches);
-    this.#tabFindReferencesState.show();
-    return matches;
-  }
-
-  async findReferencesInInstallation(searchTerm?: string): Promise<void> {
-    const term = (searchTerm ?? this.getWordAtCursor() ?? "").trim();
-    if (!term) return;
-
-    const modal = new ModalReferenceSearchOptionsState({
-      onApply: async (options) => {
-        const resources = createKeyResources();
-        let results = [];
-
-        if (this.file?.ext?.toLowerCase() === "dlg") {
-          results = await findConversationReferences(resources, term, options);
-        } else if (this.file?.ext?.toLowerCase() === "tlk") {
-          results = await findStrRefReferences(resources, term, options);
-        } else {
-          results = await findScriptReferences(resources, term, options);
-        }
-
-        const resultsModal = new ModalFileResultsState({
-          results,
-          title: `References for ${term}`,
-        });
-        resultsModal.attachToModalManager(ForgeState.modalManager);
-        resultsModal.open();
-      },
-    });
-    modal.attachToModalManager(ForgeState.modalManager);
-    modal.open();
-  }
-
   setEditor(editor: monacoEditor.editor.IStandaloneCodeEditor){
     this.editor = editor;
     this.updateTabSize();
-    this.updateBookmarkDecorations();
   }
 
   setTabSize(size: number): void {
@@ -318,14 +223,14 @@ export class TabTextEditorState extends TabState {
         model.updateOptions({ tabSize: this.tabSize, insertSpaces: true });
       }
     }
-
+    
     // Update diff editor models
     if(this.diffEditor) {
       const originalEditor = this.diffEditor.getOriginalEditor();
       const modifiedEditor = this.diffEditor.getModifiedEditor();
       const originalModel = originalEditor.getModel();
       const modifiedModel = modifiedEditor.getModel();
-
+      
       if(originalModel) {
         originalModel.updateOptions({ tabSize: this.tabSize, insertSpaces: true });
       }
@@ -333,7 +238,7 @@ export class TabTextEditorState extends TabState {
         modifiedModel.updateOptions({ tabSize: this.tabSize, insertSpaces: true });
       }
     }
-
+    
     // Update standalone models if they exist
     if(this.originalModel) {
       this.originalModel.updateOptions({ tabSize: this.tabSize, insertSpaces: true });
@@ -345,7 +250,6 @@ export class TabTextEditorState extends TabState {
 
   setMonaco(monaco: typeof monacoEditor){
     this.monaco = monaco;
-    this.updateBookmarkDecorations();
   }
 
   setDiffEditor(diffEditor: monacoEditor.editor.IStandaloneDiffEditor){
@@ -354,31 +258,31 @@ export class TabTextEditorState extends TabState {
 
   switchToDiffMode(): void {
     if(!this.monaco || !this.editor) return;
-
+    
     // Capture current text as original (left side)
     this.originalText = this.code;
-
+    
     // Create models for original and modified text
     const langId = this.getLanguageId();
     this.originalModel = this.monaco.editor.createModel(this.originalText, langId);
     this.modifiedModel = this.monaco.editor.createModel(this.code, langId);
-
+    
     // Apply tab size to models
     this.originalModel.updateOptions({ tabSize: this.tabSize });
     this.modifiedModel.updateOptions({ tabSize: this.tabSize });
-
+    
     this.isDiffMode = true;
     this.processEventListener('onDiffModeChanged');
   }
 
   switchToRegularMode(): void {
     if(!this.diffEditor) return;
-
+    
     // Get the current modified text from the diff editor
     const modifiedEditor = this.diffEditor.getModifiedEditor();
     const modifiedText = modifiedEditor.getValue();
     this.code = modifiedText;
-
+    
     // Dispose models
     if(this.originalModel) {
       this.originalModel.dispose();
@@ -388,11 +292,11 @@ export class TabTextEditorState extends TabState {
       this.modifiedModel.dispose();
       this.modifiedModel = null;
     }
-
+    
     // Dispose diff editor
     this.diffEditor.dispose();
     this.diffEditor = null;
-
+    
     this.isDiffMode = false;
     this.originalText = ``;
     this.processEventListener('onDiffModeChanged');
@@ -401,146 +305,6 @@ export class TabTextEditorState extends TabState {
   updateDiffModifiedText(): void {
     if(this.isDiffMode && this.modifiedModel) {
       this.modifiedModel.setValue(this.code);
-    }
-  }
-
-  getBookmarkStorageKey(): string {
-    const fileKey = this.file?.getPath?.() || this.file?.getFilename?.() || 'untitled';
-    return `forge.textEditor.bookmarks.${fileKey}`;
-  }
-
-  loadBookmarks(): void {
-    if(typeof window === 'undefined' || !window.localStorage) return;
-    const key = this.getBookmarkStorageKey();
-    const raw = window.localStorage.getItem(key);
-    if(raw){
-      try{
-        const parsed = JSON.parse(raw);
-        if(Array.isArray(parsed)){
-          this.bookmarks = parsed
-            .filter((b) => typeof b?.line === 'number')
-            .map((b) => ({ line: b.line, description: String(b.description || '') }));
-        }
-      }catch{
-        this.bookmarks = [];
-      }
-    }else{
-      this.bookmarks = [];
-    }
-    this.updateBookmarkDecorations();
-    this.processEventListener('onBookmarksChanged');
-  }
-
-  saveBookmarks(): void {
-    if(typeof window === 'undefined' || !window.localStorage) return;
-    const key = this.getBookmarkStorageKey();
-    window.localStorage.setItem(key, JSON.stringify(this.bookmarks));
-  }
-
-  addBookmarkAtCursor(description?: string): void {
-    const line = this.editor?.getPosition()?.lineNumber || 1;
-    const safeDescription = description?.trim() || `Bookmark at line ${line}`;
-    const existing = this.bookmarks.findIndex((b) => b.line === line);
-    if(existing >= 0){
-      this.bookmarks[existing] = { line, description: safeDescription };
-    }else{
-      this.bookmarks = [...this.bookmarks, { line, description: safeDescription }]
-        .sort((a, b) => a.line - b.line);
-    }
-    this.saveBookmarks();
-    this.updateBookmarkDecorations();
-    this.processEventListener('onBookmarksChanged');
-  }
-
-  removeBookmark(line: number): void {
-    this.bookmarks = this.bookmarks.filter((b) => b.line !== line);
-    this.saveBookmarks();
-    this.updateBookmarkDecorations();
-    this.processEventListener('onBookmarksChanged');
-  }
-
-  clearBookmarks(): void {
-    this.bookmarks = [];
-    this.saveBookmarks();
-    this.updateBookmarkDecorations();
-    this.processEventListener('onBookmarksChanged');
-  }
-
-  goToLine(line: number): void {
-    if(!this.editor) return;
-    this.editor.revealLineInCenter(line);
-    this.editor.setPosition({ lineNumber: line, column: 1 });
-    this.editor.focus();
-  }
-
-  updateBookmarkDecorations(): void {
-    if(!this.editor || !this.monaco) return;
-    const decorations = this.bookmarks.map((bookmark) => ({
-      range: new this.monaco.Range(bookmark.line, 1, bookmark.line, 1),
-      options: {
-        isWholeLine: true,
-        glyphMarginClassName: 'forge-text-editor__bookmark',
-        glyphMarginHoverMessage: { value: bookmark.description || `Bookmark at line ${bookmark.line}` },
-      }
-    }));
-    this.bookmarkDecorations = this.editor.deltaDecorations(this.bookmarkDecorations, decorations);
-  }
-
-  loadSnippets(): void {
-    if(typeof window === 'undefined' || !window.localStorage) return;
-    const raw = window.localStorage.getItem('forge.textEditor.snippets');
-    if(raw){
-      try{
-        const parsed = JSON.parse(raw);
-        if(Array.isArray(parsed)){
-          this.snippets = parsed
-            .filter((s) => typeof s?.name === 'string')
-            .map((s) => ({ name: String(s.name || ''), content: String(s.content || '') }));
-        }
-      }catch{
-        this.snippets = [];
-      }
-    }else{
-      this.snippets = [];
-    }
-    this.processEventListener('onSnippetsChanged');
-  }
-
-  saveSnippets(): void {
-    if(typeof window === 'undefined' || !window.localStorage) return;
-    window.localStorage.setItem('forge.textEditor.snippets', JSON.stringify(this.snippets));
-  }
-
-  addSnippet(name: string, content: string): void {
-    const trimmedName = name.trim();
-    if(!trimmedName) return;
-    const existing = this.snippets.findIndex((s) => s.name.toLowerCase() === trimmedName.toLowerCase());
-    if(existing >= 0){
-      this.snippets[existing] = { name: trimmedName, content };
-    }else{
-      this.snippets = [...this.snippets, { name: trimmedName, content }]
-        .sort((a, b) => a.name.localeCompare(b.name));
-    }
-    this.saveSnippets();
-    this.processEventListener('onSnippetsChanged');
-  }
-
-  removeSnippet(name: string): void {
-    this.snippets = this.snippets.filter((s) => s.name !== name);
-    this.saveSnippets();
-    this.processEventListener('onSnippetsChanged');
-  }
-
-  insertSnippet(content: string): void {
-    if(this.editor && this.monaco){
-      const selection = this.editor.getSelection();
-      const range = selection
-        ? new this.monaco.Range(selection.startLineNumber, selection.startColumn, selection.endLineNumber, selection.endColumn)
-        : new this.monaco.Range(1, 1, 1, 1);
-      this.editor.executeEdits('snippet', [{ range, text: content, forceMoveMarkers: true }]);
-      this.editor.focus();
-    }else{
-      this.setCode(`${this.code}${content}`);
     }
   }
 
@@ -556,9 +320,9 @@ export class TabTextEditorState extends TabState {
 
   triggerLinter(){
     if(!this.editor || !this.monaco) return;
-
+    
     const langId = this.getLanguageId();
-
+    
     // Handle LYT files
     if(langId === 'lyt'){
       try{
@@ -582,18 +346,18 @@ export class TabTextEditorState extends TabState {
       }
       return;
     }
-
+    
     // Handle NWScript files
     if(langId === 'nwscript'){
       this.resolveIncludes(this.code, this.resolvedIncludes).then( (resolvedIncludes) => {
         this.resolvedIncludes = resolvedIncludes;
         try{
           this.nwScriptParser.parseScript( [ [...this.resolvedIncludes.values()].join("\n"), this.code ].join("\n") );
-
+          
           // Update local functions in the tokenizer for syntax highlighting
           const localFunctions = (this.nwScriptParser.program?.functions || []).map((f: SemanticFunctionNode) => f.name);
           NWScriptLanguageService.updateLocalFunctions(localFunctions);
-
+          
           console.log(this.nwScriptParser.errors);
           const markers: any[] = [ ];
           for(let i = 0; i < this.nwScriptParser.errors.length; i++){
@@ -620,22 +384,21 @@ export class TabTextEditorState extends TabState {
           }
           this.#tabErrorLogState.setErrors(markers);
           if(this.editor) this.monaco.editor.setModelMarkers(this.editor.getModel() as monacoEditor.editor.ITextModel, 'nwscript', markers);
-        }catch(e: unknown){
+        }catch(e){
           console.log(e);
-          const err = e as { hash?: { loc: { first_line: number; first_column: number; last_line: number; last_column: number } }; lineNumber?: number; columnNumber?: number; name?: string; message?: string };
-          if(err?.hash){
-            console.log('err', err.lineNumber, err.columnNumber, err.name, err.message, err.hash);
+          if(e.hash){
+            console.log('err', e.lineNumber, e.columnNumber, e.name, e.message, e.hash);
             console.log(JSON.stringify(e));
             const markers = [{
               severity: this.monaco.MarkerSeverity.Error,
-              startLineNumber: err.hash.loc.first_line,
-              startColumn: err.hash.loc.first_column + 1,
-              endLineNumber: err.hash.loc.last_line,
-              endColumn: err.hash.loc.last_column + 1,
-              message: err.message ?? 'Unknown error'
+              startLineNumber: e.hash.loc.first_line,
+              startColumn: e.hash.loc.first_column + 1,
+              endLineNumber: e.hash.loc.last_line,
+              endColumn: e.hash.loc.last_column + 1,
+              message: e.message
             }];
             this.#tabErrorLogState.setErrors(markers);
-
+    
             if(this.editor) this.monaco.editor.setModelMarkers(this.editor.getModel() as monacoEditor.editor.ITextModel, 'nwscript', markers);
           }else{
             if(this.editor) this.monaco.editor.setModelMarkers(this.editor.getModel() as monacoEditor.editor.ITextModel, 'nwscript', []);
@@ -645,7 +408,7 @@ export class TabTextEditorState extends TabState {
       });
       return;
     }
-
+    
     // For other file types, clear markers
     if(this.editor) {
       const model = this.editor.getModel() as monacoEditor.editor.ITextModel;
@@ -677,30 +440,6 @@ export class TabTextEditorState extends TabState {
     }
   }
 
-<<<<<<< HEAD
-  async compile(): Promise<boolean> {
-    console.log('compile', 'parsing...');
-
-    // Resolve #include files and prepend them before parsing to mirror NWScript behavior
-    this.resolvedIncludes = await this.resolveIncludes(this.code, this.resolvedIncludes);
-    const mergedCode = [ [...this.resolvedIncludes.values()].join("\n"), this.code ].join("\n");
-    console.log(mergedCode);
-    ForgeState.nwScriptParser.parseScript(mergedCode);
-    if(!ForgeState.nwScriptParser.errors.length){
-      console.log('AST', ForgeState.nwScriptParser.toJSON());
-      const nwScriptCompiler = new NWScriptCompiler(ForgeState.nwScriptParser.program as any);
-      console.log('compile', 'compiling...');
-      let buffer = nwScriptCompiler.compile();
-      if(buffer){
-        this.ncs = buffer;
-        console.log('compile', 'success');
-        console.log(this.ncs);
-        this.processEventListener('onCompile');
-        return true;
-      }
-      console.warn('compile', 'failed: no buffer returned');
-      return false;
-=======
   private nwscriptCompiledNcsFileName(): string {
     const ref = this.file?.resref;
     const base = typeof ref === 'string' && ref.length ? ref : 'untitled';
@@ -713,30 +452,8 @@ export class TabTextEditorState extends TabState {
     if(!f?.path && !f?.handle){
       console.warn('Compile: save or open this NSS from disk or your project folder to emit a .ncs next to it');
       return;
->>>>>>> upstream/master
     }
-    console.error(`compile Failed with (${ForgeState.nwScriptParser.errors.length}) error!`);
-    for(let i = 0; i < ForgeState.nwScriptParser.errors.length; i++){
-      const error = ForgeState.nwScriptParser.errors[i];
-      console.error(`Error ${i}:`, error.message, error.offender?.source?.first_line, error.offender?.source?.first_column);
-    }
-    return false;
 
-<<<<<<< HEAD
-    // const nss_path = path.parse(this.file.path);
-      // if(!this.nwScriptParser.errors.length){
-      //   NotificationManager.Notify(NotificationManager.Types.INFO, `Compiling... - ${nss_path.name}.nss`);
-      //   const nwScriptCompiler = new NWScriptCompiler(this.nwScriptParser.ast);
-      //   const compiledBuffer = nwScriptCompiler.compile();
-      //   fs.writeFileSync(path.join(nss_path.dir, `${nss_path.name}.ncs`), compiledBuffer);
-      //   this.ncsTab.setNCSData(compiledBuffer);
-      //   NotificationManager.Notify(NotificationManager.Types.SUCCESS, `Compile: Success! - ${nss_path.name}.ncs`);
-      // }else{
-      //   NotificationManager.Notify(NotificationManager.Types.ALERT, `Parse: Failed! - with errors (${this.nwScriptParser.errors.length})`);
-      // }
-  }
-
-=======
     if(f.archive_path){
       console.warn('Compile: NSS opened from an archive has no sibling folder — export the script or edit it under your game/project tree to save .ncs beside it.');
       return;
@@ -833,5 +550,4 @@ export class TabTextEditorState extends TabState {
   }
 
   
->>>>>>> upstream/master
 }

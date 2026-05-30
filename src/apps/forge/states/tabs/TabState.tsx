@@ -1,15 +1,8 @@
 import React from "react";
-<<<<<<< HEAD
-import { EditorFile, EditorFileEventListenerTypes } from "../../EditorFile";
-import BaseTabStateOptions from "../../interfaces/BaseTabStateOptions";
-import type { EditorTabManager } from "../../managers/EditorTabManager";
-import { GetNewTabID } from "../../managers/TabIdGenerator";
-=======
 import { EditorFile, EditorFileEventListenerTypes } from "@/apps/forge/EditorFile";
 import BaseTabStateOptions from "@/apps/forge/interfaces/BaseTabStateOptions";
 import { EditorTabManager } from "@/apps/forge/managers/EditorTabManager";
 import { ForgeState } from "@/apps/forge/states/ForgeState";
->>>>>>> upstream/master
 import * as fs from "fs";
 import { EventListenerModel } from "@/apps/forge/EventListenerModel";
 import { supportedFileDialogTypes, supportedFilePickerTypes } from "@/apps/forge/ForgeFileSystem";
@@ -52,8 +45,8 @@ export class TabState extends EventListenerModel {
 
   file: EditorFile;
   saveTypes: FilePickerAcceptType[] = [];
-
-  #tabContentView: React.ReactElement = (<></>);
+  
+  #tabContentView: JSX.Element = (<></>);
 
   #_onSaveStateChanged: (file: EditorFile) => void;
   #_onNameChanged: (file: EditorFile) => void;
@@ -148,7 +141,7 @@ export class TabState extends EventListenerModel {
       singleInstance: false,
     }, options);
 
-    this.id = GetNewTabID();
+    this.id = EditorTabManager.GetNewTabID();
 
     if(options.singleInstance){
       this.singleInstance = true;
@@ -159,7 +152,7 @@ export class TabState extends EventListenerModel {
     }
 
     this.visible = false;
-
+    
     if(options.closeable){
       this.isClosable = options.closeable;
     }
@@ -176,7 +169,7 @@ export class TabState extends EventListenerModel {
       this.file.addEventListener<EditorFileEventListenerTypes>('onSaveStateChanged', this.#_onSaveStateChanged);
       this.file.addEventListener<EditorFileEventListenerTypes>('onNameChanged', this.#_onNameChanged);
     }
-
+    
     this.#_onKeyDown = (e: KeyboardEvent) => {
       if((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'w'){
         if(this.isClosable){
@@ -196,11 +189,11 @@ export class TabState extends EventListenerModel {
       }
       this.processEventListener('onKeyDown', [e, this]);
     };
-
+    
     this.#_onKeyUp = (e: KeyboardEvent) => {
       this.processEventListener('onKeyUp', [e, this]);
     };
-
+    
     this.editorFileUpdated();
   }
 
@@ -235,7 +228,7 @@ export class TabState extends EventListenerModel {
     return this.#tabContentView;
   }
 
-  setContentView(tabContentView: React.ReactElement){
+  setContentView(tabContentView: JSX.Element){
     this.#tabContentView = tabContentView;
   }
 
@@ -263,7 +256,7 @@ export class TabState extends EventListenerModel {
     this.#tabManager.currentTab = this;
     this.#tabManager.triggerEventListener('onTabShow', [this]);
     this.processEventListener('onTabShow', [this]);
-
+    
     // Attach keyboard event listeners
     window.addEventListener('keydown', this.#_onKeyDown);
     window.addEventListener('keyup', this.#_onKeyUp);
@@ -273,7 +266,7 @@ export class TabState extends EventListenerModel {
     this.visible = false;
     this.#tabManager.triggerEventListener('onTabHide', [this]);
     this.processEventListener('onTabHide', [this]);
-
+    
     // Remove keyboard event listeners
     window.removeEventListener('keydown', this.#_onKeyDown);
     window.removeEventListener('keyup', this.#_onKeyUp);
@@ -299,13 +292,13 @@ export class TabState extends EventListenerModel {
 
   destroy() {
     this.isDestroyed = true;
-
+    
     // Remove keyboard event listeners if tab is still visible
     if(this.visible){
       window.removeEventListener('keydown', this.#_onKeyDown);
       window.removeEventListener('keyup', this.#_onKeyUp);
     }
-
+    
     this.processEventListener('onTabDestroyed', [this]);
   }
 
@@ -318,8 +311,8 @@ export class TabState extends EventListenerModel {
   }
 
 
-  /** Sync tab state to file buffer. Override in subclasses (e.g. GFF editors). */
   updateFile(){
+    //stub method to be overridden by subclasses
   }
 
   async save() {
@@ -415,12 +408,10 @@ export class TabState extends EventListenerModel {
   getSaveTypes(): any {
     if(KotOR.ApplicationProfile.ENV == KotOR.ApplicationEnvironment.ELECTRON){
       return this.saveTypes.length ? Object.values(this.saveTypes.map( (type) => {
-        const accept = type.accept as Record<string, string | string[]>;
         return {
           name: type.description,
-          extensions: Object.keys(accept).map( (node) => {
-            const accepted = accept[node];
-            return typeof accepted === 'string' ? accepted.replace('.', '') : accepted.map( (entry) => entry.replace('.', ''));
+          extensions: Object.keys(type.accept).map( (node) => {
+            return typeof type.accept[node] === 'string' ? type.accept[node].replace('.', '') : type.accept[node].map( (type) => type.replace('.', ''));
           }).flat()
         }
       })) : [
@@ -508,16 +499,15 @@ export class TabState extends EventListenerModel {
             resolve(false);
           }
         }
-      }catch(e: unknown){
+      }catch(e: any){
         console.error(e);
         resolve(false);
       }
     });
   }
 
-  /** Compile (e.g. NSS to NCS). Override in TabTextEditorState; base returns false. */
-  async compile(): Promise<boolean> {
-    return false;
+  async compile() {
+    throw new Error("Method not implemented.");
   }
 
   storeState(): TabStoreState {

@@ -14,21 +14,12 @@ import { ModalManagerState } from "@/apps/forge/states/modal/ModalManagerState";
 import { MenuTopState } from "@/apps/forge/states/MenuTopState";
 import { AudioPlayerState } from "@/apps/forge/states/AudioPlayerState";
 
-<<<<<<< HEAD
-import * as KotOR from '../KotOR';
-import { NWScriptLanguageService } from "./NWScriptLanguageService";
-import { LYTLanguageService } from "./LYTLanguageService";
-import { RecentProject } from "../RecentProject";
-import { DEFAULT_EXTRACT_OPTIONS, type ExtractOptions } from "../data/ExtractOptions";
-import { RECENT_FILES_MAX, RECENT_PROJECTS_MAX } from "../data/ForgeConstants";
-=======
 import * as KotOR from "@/apps/forge/KotOR";
 import { ForgeInitializer } from "@/apps/forge/ForgeInitializer";
 import { NWScriptLanguageService } from "@/apps/forge/states/NWScriptLanguageService";
 import { LYTLanguageService } from "@/apps/forge/states/LYTLanguageService";
 import { TXILanguageService } from "@/apps/forge/states/TXILanguageService";
 import { RecentProject } from "@/apps/forge/RecentProject";
->>>>>>> upstream/master
 
 export class ForgeState {
   // static MenuTop: MenuTop = new MenuTop()
@@ -39,12 +30,6 @@ export class ForgeState {
   static explorerTabManager: EditorTabManager = new EditorTabManager();
   static projectExplorerTab: TabProjectExplorerState = new TabProjectExplorerState();
   static resourceExplorerTab: TabResourceExplorerState = new TabResourceExplorerState();
-
-  /** Current extract options (TPC/MDL decompile, etc.). Updated by Help → Extract Options. */
-  static extractOptions: ExtractOptions = { ...DEFAULT_EXTRACT_OPTIONS };
-
-  /** Current theme/appearance (loaded from ConfigClient, applied to app container) */
-  static theme: string = 'dark';
 
   static recentFiles: EditorFile[] = [];
   static recentProjects: RecentProject[] = [];
@@ -133,10 +118,6 @@ export class ForgeState {
 
   static async InitializeApp(): Promise<void>{
     return new Promise( (resolve, reject) => {
-      // Load theme preference
-      ForgeState.theme = KotOR.ConfigClient.get('Appearance.Theme', 'dark') as string;
-      ForgeState.applyTheme(ForgeState.theme);
-
       if(KotOR.ApplicationProfile.ENV == KotOR.ApplicationEnvironment.ELECTRON){
         KotOR.ApplicationProfile.directory = KotOR.ApplicationProfile.profile.directory;
       }else{
@@ -176,7 +157,7 @@ export class ForgeState {
 
         ForgeState.recentFiles = ForgeState.getRecentFiles();
         ForgeState.recentProjects = ForgeState.getRecentProjects();
-
+        
         // Restore handles from IndexedDB for browser projects
         if(KotOR.ApplicationProfile.ENV == KotOR.ApplicationEnvironment.BROWSER){
           const { get } = await import('idb-keyval');
@@ -194,10 +175,10 @@ export class ForgeState {
             }
           }
         }
-
+        
         this.processEventListener('onRecentProjectsUpdated', []);
         this.processEventListener('onRecentFilesUpdated', []);
-
+        
         const tabStates: TabStoreState[] = KotOR.ConfigClient.get('open_tabs', []);
         if(tabStates.length){
           for(let i = 0; i < tabStates.length; i++){
@@ -255,7 +236,7 @@ export class ForgeState {
             console.error('no directory');
           }
 
-        }catch(e: unknown){
+        }catch(e: any){
           console.error(e);
         }
       }
@@ -328,10 +309,6 @@ export class ForgeState {
 
         //Append this file to the beginning of the list
         ForgeState.recentFiles.unshift(file);
-        const maxRecentFiles = 20;
-        if (ForgeState.recentFiles.length > maxRecentFiles) {
-          ForgeState.recentFiles = ForgeState.recentFiles.slice(0, maxRecentFiles);
-        }
 
         this.saveState();
 
@@ -374,14 +351,14 @@ export class ForgeState {
       } else {
         // For Browser, projectPathOrHandle could be a handle or a string name
         if(projectPathOrHandle instanceof FileSystemDirectoryHandle){
-          project = new RecentProject({
+          project = new RecentProject({ 
             handle: projectPathOrHandle,
-            name: projectPathOrHandle.name
+            name: projectPathOrHandle.name 
           });
         } else if(handle instanceof FileSystemDirectoryHandle){
-          project = new RecentProject({
+          project = new RecentProject({ 
             handle: handle,
-            name: typeof projectPathOrHandle === 'string' ? projectPathOrHandle : handle.name
+            name: typeof projectPathOrHandle === 'string' ? projectPathOrHandle : handle.name 
           });
         } else if(typeof projectPathOrHandle === 'string'){
           // Fallback: just store the name if handle is not available
@@ -397,8 +374,9 @@ export class ForgeState {
       // Add to beginning of list
       ForgeState.recentProjects.unshift(project);
 
-      if (ForgeState.recentProjects.length > RECENT_PROJECTS_MAX) {
-        ForgeState.recentProjects = ForgeState.recentProjects.slice(0, RECENT_PROJECTS_MAX);
+      // Limit to 10 most recent
+      if(ForgeState.recentProjects.length > 10){
+        ForgeState.recentProjects = ForgeState.recentProjects.slice(0, 10);
       }
 
       // Sync with ConfigClient (handles are stored in IndexedDB via idb-keyval)
@@ -430,7 +408,7 @@ export class ForgeState {
 
   static async removeRecentProject(projectOrIdentifier: RecentProject | string){
     if(!projectOrIdentifier) return;
-
+    
     let index = -1;
     if(projectOrIdentifier instanceof RecentProject){
       const identifier = projectOrIdentifier.getIdentifier();
@@ -438,14 +416,14 @@ export class ForgeState {
         return proj.getIdentifier() === identifier;
       });
     } else {
-      const normalized = typeof projectOrIdentifier === 'string'
-        ? projectOrIdentifier.replace(/\\/g, '/')
+      const normalized = typeof projectOrIdentifier === 'string' 
+        ? projectOrIdentifier.replace(/\\/g, '/') 
         : '';
       index = ForgeState.recentProjects.findIndex((proj: RecentProject) => {
         return proj.getIdentifier()?.replace(/\\/g, '/') === normalized;
       });
     }
-
+    
     if(index >= 0){
       const removed = ForgeState.recentProjects[index];
       // Clean up stored handle if it exists
@@ -477,21 +455,6 @@ export class ForgeState {
     }
   }
 
-  /** Clear all recent projects from the list. */
-  static async clearRecentProjects(): Promise<void> {
-    for (const proj of [...ForgeState.recentProjects]) {
-      if (proj.handle) {
-        const handleKey = `project_handle_${proj.getIdentifier()}`;
-        const { del } = await import('idb-keyval');
-        del(handleKey).catch((e) => console.warn('Failed to delete handle from IndexedDB:', e));
-      }
-    }
-    ForgeState.recentProjects = [];
-    KotOR.ConfigClient.options.recent_projects = [];
-    this.saveState();
-    this.processEventListener('onRecentProjectsUpdated', []);
-  }
-
   static saveState(){
     try{
       KotOR.ConfigClient.save(null as any, true); //Save the configuration silently
@@ -500,31 +463,18 @@ export class ForgeState {
     }
   }
 
-  /**
-   * Switch the active game profile (e.g. KOTOR vs TSL). Reloads the app with the new profile.
-   * If any open tab has unsaved changes, prompts the user to confirm before switching.
-   */
   static switchGame(profile: any = {}){
-    if (!profile?.key) return;
-    const currentKey = KotOR.ApplicationProfile.profile?.key;
-    if (profile.key === currentKey) return;
+    //TODO
 
-    const tabs = ForgeState.tabManager?.tabs ?? [];
-    const hasUnsaved = tabs.some((t: { file?: EditorFile }) => t.file?.unsaved_changes);
-    if (hasUnsaved) {
-      const proceed = window.confirm(
-        "You have tabs with unsaved changes. Switch game anyway? Changes will be lost."
-      );
-      if (!proceed) return;
-    }
+    //check if the new profile is different from the current profile
 
-    try {
-      KotOR.ConfigClient.save(null as any, true);
-    } catch (e) {
-      console.error(e);
-    }
-    window.location.search = `?key=${profile.key}`;
-    window.location.reload();
+    //check for open unsaved work
+
+    //save the current forge state
+
+    //switch to the new profile
+
+    //give the use back control of the application
   }
 
   static openFile(){
@@ -544,31 +494,18 @@ export class ForgeState {
             }).then( (result: any) => {
               let file_path2 = result.filePaths[0];
               FileTypeManager.onOpenFile({
-<<<<<<< HEAD
-                path: file_path,
-                path2: file_path2,
-                filename: parsed.base,
-                resref: parsed.name,
-=======
                 path: EditorFile.diskPathToFileURI(file_path) || file_path.replace(/\\/g, '/'),
                 path2: EditorFile.diskPathToFileURI(file_path2) || String(file_path2).replace(/\\/g, '/'),
                 filename: parsed.base, 
                 resref: parsed.name, 
->>>>>>> upstream/master
                 ext: parsed.ext
               });
             });
           }else{
             FileTypeManager.onOpenFile({
-<<<<<<< HEAD
-              path: file_path,
-              filename: parsed.base,
-              resref: parsed.name,
-=======
               path: EditorFile.diskPathToFileURI(file_path) || file_path.replace(/\\/g, '/'),
               filename: parsed.base, 
               resref: parsed.name, 
->>>>>>> upstream/master
               ext: parsed.ext
             });
           }
@@ -591,38 +528,22 @@ export class ForgeState {
             document.title = originalTitle;
 
             FileTypeManager.onOpenFile({
-<<<<<<< HEAD
-              path: `${EditorFileProtocol.FILE}//system.dir/${handle.name}`,
-              path2: `${EditorFileProtocol.FILE}//system.dir/${mdxHandle.name}`,
-              handle: handle,
-              handle2: mdxHandle,
-              filename: handle.name,
-              resref: parsed.name,
-=======
               path: EditorFile.referenceURIForSystemVirtualName(handle.name),
               path2: EditorFile.referenceURIForSystemVirtualName(mdxHandle.name),
               handle: handle, 
               handle2: mdxHandle, 
               filename: handle.name, 
               resref: parsed.name, 
->>>>>>> upstream/master
               ext: parsed.ext
             });
 
 
           }else{
             FileTypeManager.onOpenFile({
-<<<<<<< HEAD
-              path: `${EditorFileProtocol.FILE}//system.dir/${handle.name}`,
-              handle: handle,
-              filename: handle.name,
-              resref: parsed.name,
-=======
               path: EditorFile.referenceURIForSystemVirtualName(handle.name),
               handle: handle, 
               filename: handle.name, 
               resref: parsed.name, 
->>>>>>> upstream/master
               ext: parsed.ext
             });
           }
@@ -650,36 +571,11 @@ export class ForgeState {
     }
   }
 
-  /**
-   * Apply theme to the app container.
-   * Themes: 'dark' (default), 'light', 'auto' (system preference)
-   */
-  static applyTheme(theme: string) {
-    ForgeState.theme = theme;
-
-    let effectiveTheme = theme;
-    if(theme === 'auto'){
-      // Detect system preference
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      effectiveTheme = prefersDark ? 'dark' : 'light';
-    }
-
-    const appContainer = document.getElementById('app');
-    if(appContainer){
-      appContainer.setAttribute('data-theme', effectiveTheme);
-    }
-
-    // Also set on body for global styles
-    document.body.setAttribute('data-theme', effectiveTheme);
-
-    ForgeState.processEventListener('onThemeChange', [effectiveTheme]);
-  }
-
 }
 (window as any).ForgeState = ForgeState;
 (window as any).ProjectFileSystem = ProjectFileSystem;
 
-window.addEventListener('beforeunload', (event) => {
+window.addEventListener('beforeunload', (event) => { 
   console.log('Saving Editor Config');
   ForgeState.saveOpenTabsState();
 });

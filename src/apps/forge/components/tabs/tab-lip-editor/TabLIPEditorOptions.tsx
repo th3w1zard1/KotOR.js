@@ -10,13 +10,7 @@ import { useEffectOnce } from "@/apps/forge/helpers/UseEffectOnce";
 import { Button, Form } from "react-bootstrap";
 import { SectionContainer } from "@/apps/forge/components/SectionContainer";
 
-<<<<<<< HEAD
-import * as KotOR from "../../../KotOR";
-import { ForgeState } from "../../../states/ForgeState";
-import { ModalLIPBatchProcessorState } from "../../../states/modal/ModalLIPBatchProcessorState";
-=======
 import * as KotOR from "@/apps/forge/KotOR";
->>>>>>> upstream/master
 
 export interface TabLIPEditorOptionsProps {
   tab: TabLIPEditorOptionsState;
@@ -270,21 +264,7 @@ export const TabLIPEditorOptions = function (props: TabLIPEditorOptionsProps) {
           </Form.Select>
         </div>
       </SectionContainer>
-<<<<<<< HEAD
-      <SectionContainer name="Utilities">
-        <Button onClick={onImportPHNClick} className="me-2">Import PHN</Button>
-        <Button variant="outline-secondary" onClick={() => {
-          const lipBatchModal = new ModalLIPBatchProcessorState();
-          ForgeState.modalManager.addModal(lipBatchModal);
-          lipBatchModal.open();
-        }}>LIP Batch Processor…</Button>
-      </SectionContainer>
-    </>
-  );
-}
-=======
 
     </div>
   );
 };
->>>>>>> upstream/master

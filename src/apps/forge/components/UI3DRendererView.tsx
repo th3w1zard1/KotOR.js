@@ -8,19 +8,19 @@ export type { MenuItem };
 
 export interface UI3DRendererViewProps {
   context: UI3DRenderer;
-  children?: React.ReactNode;
-  onMouseWheel?: () => void;
+  children?: any;
+  onMouseWheel?: Function;
   menuItems?: MenuItem[];
   showMenuBar?: boolean;
 }
 
 export const UI3DRendererView = function(props: UI3DRendererViewProps){
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef: React.RefObject<HTMLCanvasElement> = useRef<HTMLCanvasElement>() as any;
   const context = props.context;
 
   useEffectOnce(() => {
     if(!(props.context instanceof UI3DRenderer)){
-      props.context = new UI3DRenderer(canvasRef.current as HTMLCanvasElement);
+      props.context = new UI3DRenderer(canvasRef.current as any);
     }
     return () => {
       if(props.context){
@@ -29,12 +29,6 @@ export const UI3DRendererView = function(props: UI3DRendererViewProps){
     }
   });
 
-<<<<<<< HEAD
-  useEffect( () => {
-    props.context.setCanvas(canvasRef.current as HTMLCanvasElement);
-    if(canvasRef.current){
-      canvasRef.current.dataset.uuid = crypto.randomUUID();
-=======
   // Refs do not trigger re-renders; [canvasRef.current] in deps never re-fires after the canvas mounts.
   // useLayoutEffect runs after DOM commit so the canvas ref is set before parent useEffect (e.g. openFile/loadHead).
   useLayoutEffect( () => {
@@ -43,7 +37,6 @@ export const UI3DRendererView = function(props: UI3DRendererViewProps){
     props.context.setCanvas(canvas);
     if(!canvas.dataset.uuid){
       canvas.dataset.uuid = crypto.randomUUID();
->>>>>>> upstream/master
     }
   }, [props.context]);
 

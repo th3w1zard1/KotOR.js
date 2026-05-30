@@ -25,15 +25,10 @@ export const KeyFrameTimelineComponent = function(props: any){
   const [selectedAnimationIndex, setSelectedAnimationIndex] = useState<number>(tab.selectedAnimationIndex);
   const [panelHeight, setPanelHeight] = useState<number>(0);
   const [seekPositionLeft, setSeekPositionLeft] = useState<number>(0);
-<<<<<<< HEAD
-  const waveformCanvasRef = useRef<HTMLCanvasElement>(null);
-  const keyframeWindowRef = useRef<HTMLDivElement>(null);
-=======
   const waveformCanvasRef = useRef<HTMLCanvasElement>();
   const keyframeWindowRef = useRef<HTMLDivElement>();
   const keyframeDragMovedRef = useRef<boolean>(false);
   const suppressTimelineClickRef = useRef<boolean>(false);
->>>>>>> upstream/master
 
   const [animations, setAnimations] = useState<KotOR.OdysseyModelAnimation[]>([]);
   const [timelineZoom, setTimelineZoom] = useState<number>(tab.timelineZoom);
@@ -134,9 +129,6 @@ export const KeyFrameTimelineComponent = function(props: any){
     if(keyframeWindowRef?.current) panelObserver.observe(keyframeWindowRef?.current);
   }, [keyframeWindowRef.current]);
 
-<<<<<<< HEAD
-  const timestamps: React.ReactElement[] = [];
-=======
   useEffect(() => {
     const onWindowMouseUp = () => {
       if (tab.dragging_frame) {
@@ -165,7 +157,6 @@ export const KeyFrameTimelineComponent = function(props: any){
     return Math.max(rows, 1);
   })();
   const trackContentHeight = Math.max(trackContentRows * 27, Math.max(panelHeight - 25, 54));
->>>>>>> upstream/master
 
   const onBtnZoomIn = function(){
     tab.keyframeTrackZoomIn();
