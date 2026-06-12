@@ -90,7 +90,7 @@
     "css-loader": "^7.1.4",
     "dxt-js": "^0.0.3",
     "electron": "^41.1.1",
-    "esbuild": "^0.28.0",
+    "esbuild": "^0.28.1",
     "esbuild-loader": "^4.4.3",
     "escodegen": "^2.1.0",
     "eslint": "^9.39.4",
