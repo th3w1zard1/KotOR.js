@@ -23,13 +23,16 @@ CI HMR e2e used synthetic `activateSession()` and did not prove session preserva
 ### Dual-mode e2e (`scripts/hmr-session.e2e.cjs`)
 
 - **`USE_REAL_ASSETS`**: when `KOTOR_DEV_GAME_DIR` exists on disk, pass it to webpack serve and poll `snapshotSession().ready` instead of calling `activateSession()`.
-- **`USE_IN_MODULE`**: when `KOTOR_HMR_E2E_MODULE` is also set (e.g. `end_m01aa`), call `window.__KOTOR_HMR_TEST__.startQuickPlayToModule()` after menu ready, then assert module + player position survive probe HMR.
+- **`USE_IN_MODULE`**: when `KOTOR_HMR_E2E_MODULE` is also set (e.g. `end_m01aa`), call `window.__KOTOR_HMR_TEST__.startQuickPlayToModule()` after menu ready, then assert module + player position survive probe HMR **and** reload-resume:
+  - **`runF5ResumePhase`**: nudge player → snapshot in localStorage → full reload → `__KOTOR_DEV_RESUME_STATE__ === 'resumed'` → position within 0.25
+  - **`runEngineEditResumePhase`**: patch `ModuleArea.update` marker → auto reload → auto-resume → marker increments (new code live)
+- Initial page load must **not** use `?devresume=0` — reload phases inherit the URL and resume stays disabled.
 - Use Node-side polling (2s interval) rather than long `page.waitForFunction` to avoid Puppeteer protocol timeouts on multi-minute loads.
 - Set `protocolTimeout` and `--disable-dev-shm-usage` for headless Chromium on large asset loads.
 
 ### HmrTestBridge quick-play
 
-`startQuickPlayToModule` mirrors CharGen quick-play: init CharGen template, save player template, init game-in-progress folder, `LoadModule(name)`. Snapshot uses `module.filename` (not `module.name`) for comparison with env module id.
+`startQuickPlayToModule` mirrors CharGen quick-play: init CharGen template, save player template, init game-in-progress folder, **`waitForSceneGui()`**, then `LoadMainGameMenus()` if needed, then `LoadModule(name)`. Snapshot uses `module.filename` (not `module.name`) for comparison with env module id.
 
 ### KeyMapper guards
 

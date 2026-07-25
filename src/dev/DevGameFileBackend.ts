@@ -253,6 +253,36 @@ function listVirtualDirEntries(dirPath: string): string[] {
   return [...entries];
 }
 
+/** Snapshot virtual gameinprogress writes for dev checkpoint capture. */
+export function snapshotVirtualFilesForCheckpoint(): Array<{ path: string; bytes: Uint8Array }> {
+  const entries: Array<{ path: string; bytes: Uint8Array }> = [];
+  for (const [filePath, bytes] of virtualFiles) {
+    entries.push({ path: filePath, bytes: new Uint8Array(bytes) });
+  }
+  return entries;
+}
+
+/** Restore virtual files from checkpoint manifest (U5 restore path). */
+export function restoreVirtualFilesFromCheckpoint(
+  manifest: Array<{ path: string; bytes: Uint8Array }>,
+): void {
+  virtualFiles.clear();
+  virtualDirs.clear();
+  for (const entry of manifest) {
+    const normalized = normalizePath(entry.path);
+    virtualFiles.set(normalized, new Uint8Array(entry.bytes));
+    ensureVirtualParentDirs(normalized);
+  }
+}
+
+/** Clear virtual FS state (tests only). */
+export function resetDevGameVirtualFsForTests(): void {
+  virtualFiles.clear();
+  virtualDirs.clear();
+  statCache.clear();
+  fileByteCache.clear();
+}
+
 function ensureVirtualParentDirs(filePath: string): void {
   const normalized = normalizePath(filePath);
   const parts = normalized.split('/');

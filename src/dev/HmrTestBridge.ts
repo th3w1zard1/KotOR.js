@@ -74,6 +74,24 @@ function isInModuleMode(mode: number): boolean {
     || mode === KotOR.EngineMode.FREELOOK;
 }
 
+function waitForSceneGui(timeoutMs = 120000): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const started = performance.now();
+    const tick = () => {
+      if (KotOR.GameState.scene_gui) {
+        resolve();
+        return;
+      }
+      if (performance.now() - started > timeoutMs) {
+        reject(new Error(`scene_gui not ready after ${timeoutMs}ms`));
+        return;
+      }
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+}
+
 function waitForInGameModule(timeoutMs = 300000): Promise<void> {
   return new Promise((resolve, reject) => {
     const started = performance.now();
@@ -135,6 +153,7 @@ export async function startQuickPlayToModule(moduleName: string): Promise<void> 
   KotOR.GameState.PartyManager.ActualPlayerTemplate = template;
   KotOR.GameState.PartyManager.AddPortraitToOrder(portraitResRefFromTemplate(template));
   await CurrentGame.InitGameInProgressFolder(true);
+  await waitForSceneGui();
   const menuManager = KotOR.GameState.MenuManager;
   if (!menuManager.LoadScreen || !menuManager.MenuToolTip) {
     if (!menuManager.activeMenus) {

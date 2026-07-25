@@ -5,9 +5,17 @@ import { HotReloadManager } from "@/dev/HotReloadManager";
 import { installHmrTestBridge } from "@/dev/HmrTestBridge";
 import {
   captureDevResumeSnapshot,
+  discardDevResumeSnapshotUnlessInModule,
   installDevSessionResume,
   tryResumeDevSession,
 } from "@/dev/DevSessionResume";
+import { installDevInputGuard } from "@/dev/DevInputGuard";
+import {
+  captureDevCheckpoint,
+  discardDevCheckpointUnlessInModule,
+  installDevSessionCheckpoint,
+  tryRestoreDevCheckpoint,
+} from "@/dev/DevSessionCheckpoint";
 import { HMR_PROBE } from "@/dev/HmrTestProbe";
 import {
   clearDevBrowserDirectoryHandle,
@@ -102,8 +110,17 @@ function bootstrap(): void {
   mountApp();
   if (process.env.NODE_ENV !== 'production') {
     installDevSessionResume();
-    // F5 / fallback-reload resume: jump back into the saved module instead of main menu.
-    void tryResumeDevSession();
+    installDevSessionCheckpoint();
+    installDevInputGuard();
+    // Checkpoint restore first (full instance); legacy position-only resume as fallback.
+    requestAnimationFrame(() => {
+      void (async () => {
+        const restored = await tryRestoreDevCheckpoint();
+        if (!restored) {
+          await tryResumeDevSession();
+        }
+      })();
+    });
   }
 }
 
@@ -135,15 +152,27 @@ if (typeof module !== 'undefined' && module.hot) {
         if ((window as any).__KOTOR_HMR_RELOAD_PENDING__) {
           return;
         }
-        const inSession = KotOR.GameState.hmrIsSessionActive();
-        const saved = captureDevResumeSnapshot();
-        if (!inSession && !saved) {
-          console.warn('[HMR] Update not hot-applicable — no live session to resume, skipping reload');
-          return;
-        }
-        (window as any).__KOTOR_HMR_RELOAD_PENDING__ = true;
-        console.warn(`[HMR] Update not hot-applicable — full reload${saved ? ' with session resume' : ''}`);
-        window.location.reload();
+        void (async () => {
+          discardDevCheckpointUnlessInModule();
+          const checkpointCaptured = await captureDevCheckpoint('hmr_abort');
+          let legacyCaptured = false;
+          if (!checkpointCaptured) {
+            // Degraded fallback: position-only header when full checkpoint fails off-module.
+            legacyCaptured = captureDevResumeSnapshot();
+            if (!legacyCaptured) {
+              discardDevResumeSnapshotUnlessInModule();
+            }
+          }
+          const inSession = KotOR.GameState.hmrIsSessionActive();
+          if (!inSession && !checkpointCaptured && !legacyCaptured) {
+            console.warn('[HMR] Update not hot-applicable — no live session to restore, skipping reload');
+            return;
+          }
+          (window as any).__KOTOR_HMR_RELOAD_PENDING__ = true;
+          const mode = checkpointCaptured ? 'instance checkpoint' : legacyCaptured ? 'position fallback' : 'reload';
+          console.warn(`[HMR] Update not hot-applicable — full reload with ${mode}`);
+          window.location.reload();
+        })();
       }
     });
   }

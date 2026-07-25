@@ -10,12 +10,12 @@ declare global {
     __KOTOR_DEV_RESUME_INSTALLED__?: boolean;
     __KOTOR_DEV_RESUME_STATE__?: 'idle' | 'resuming' | 'resumed' | 'failed' | 'disabled';
     __KOTOR_HMR_RELOAD_PENDING__?: boolean;
+    __KOTOR_DEV_RESUME_CAPTURE_WARNED__?: boolean;
   }
 }
 
 const STORAGE_KEY = 'kotor.devResumeSnapshot';
 const SNAPSHOT_VERSION = 1;
-const AUTOSAVE_INTERVAL_MS = 2000;
 const MAX_RESUME_ATTEMPTS = 3;
 const BOOTSTRAP_WAIT_MS = 180000;
 
@@ -78,17 +78,25 @@ export function clearDevResumeSnapshot(): void {
   }
 }
 
+/** Drop stale position-only fallback when not in an in-module session (e.g. main menu). */
+export function discardDevResumeSnapshotUnlessInModule(): void {
+  if (!isInModuleSession()) {
+    clearDevResumeSnapshot();
+  }
+}
+
 /**
- * Synchronously snapshots the live session to localStorage so a full reload
- * (F5 or webpack HMR fallback) can resume in-module instead of returning to
- * the main menu. Safe to call from beforeunload.
+ * Synchronously writes a tiny position-only fallback to localStorage when full
+ * instance checkpoint capture fails (HMR abort degraded path). Not a retail save.
  */
 export function captureDevResumeSnapshot(): boolean {
   if (process.env.NODE_ENV === 'production') return false;
+  if (window.__KOTOR_DEV_RESUME_STATE__ === 'resuming') return false;
   if (!isInModuleSession()) return false;
   const player = getPlayerCreature();
   if (!player?.position) return false;
-  return writeSnapshot({
+  const existing = readSnapshot();
+  const ok = writeSnapshot({
     v: SNAPSHOT_VERSION,
     ts: Date.now(),
     module: KotOR.GameState.module.filename,
@@ -98,8 +106,13 @@ export function captureDevResumeSnapshot(): boolean {
       z: player.position.z,
     },
     facing: typeof player.rotation?.z === 'number' ? player.rotation.z : 0,
-    attempts: 0,
+    attempts: existing?.attempts ?? 0,
   });
+  if (!ok && !window.__KOTOR_DEV_RESUME_CAPTURE_WARNED__) {
+    window.__KOTOR_DEV_RESUME_CAPTURE_WARNED__ = true;
+    console.warn('[DevResume] Snapshot capture failed — localStorage unavailable; reload will not resume');
+  }
+  return ok;
 }
 
 function playerTransformMatches(snapshot: DevResumeSnapshot): boolean {
@@ -157,9 +170,8 @@ function applySnapshotTransform(snapshot: DevResumeSnapshot): void {
 }
 
 /**
- * Boot-time auto-resume: if a dev snapshot exists, quick-play back into the
- * saved module and restore the player transform. Self-heals from crash loops
- * via an attempt counter, and can be disabled with `?devresume=0`.
+ * Boot-time position-only fallback when dev instance checkpoint restore fails.
+ * Superseded by tryRestoreDevCheckpoint(); retained for degraded HMR path.
  */
 export async function tryResumeDevSession(): Promise<boolean> {
   if (process.env.NODE_ENV === 'production') return false;
@@ -225,8 +237,8 @@ export async function tryResumeDevSession(): Promise<boolean> {
 }
 
 /**
- * Installs the continuous snapshot loop + beforeunload capture. Idempotent
- * across HMR re-executions via a window guard.
+ * Legacy position-only capture for beforeunload fallback. Rolling capture is
+ * owned by DevSessionCheckpoint; this module only handles degraded resume.
  */
 export function installDevSessionResume(): void {
   if (process.env.NODE_ENV === 'production') return;
@@ -234,10 +246,7 @@ export function installDevSessionResume(): void {
   window.__KOTOR_DEV_RESUME_INSTALLED__ = true;
 
   window.addEventListener('beforeunload', () => {
+    discardDevResumeSnapshotUnlessInModule();
     captureDevResumeSnapshot();
   });
-
-  window.setInterval(() => {
-    captureDevResumeSnapshot();
-  }, AUTOSAVE_INTERVAL_MS);
 }

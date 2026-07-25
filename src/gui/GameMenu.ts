@@ -204,7 +204,11 @@ export class GameMenu {
 
   hide(){
     this.bVisible = false;
-    GameState.scene_gui.remove(this.tGuiPanel.getControl());
+    const control = this.tGuiPanel?.getControl?.();
+    if (!GameState.scene_gui || !control) {
+      return;
+    }
+    GameState.scene_gui.remove(control);
 
     //Handle the child menu if it is set
     if(this.childMenu instanceof GameMenu)
@@ -215,9 +219,13 @@ export class GameMenu {
     // this.Hide();
     if(!this.isOverlayGUI && GameState.Mode !== EngineMode.MOVIE)
       GameState.SetEngineMode(this.engineMode);
-      
+
+    const control = this.tGuiPanel?.getControl?.();
+    if (!GameState.scene_gui || !control) {
+      return;
+    }
     this.bVisible = true;
-    GameState.scene_gui.add(this.tGuiPanel.getControl());
+    GameState.scene_gui.add(control);
 
     //Handle the child menu if it is set
     if(this.childMenu instanceof GameMenu)

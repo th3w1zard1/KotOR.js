@@ -6,11 +6,11 @@ Short entrypoint for coding agents. Human developers: see [README.md](README.md)
 
 This branch adds **HMR dev play** (`webpack:serve-hmr`, `DevGameFileBackend`, `/__kotor_dev_fs` middleware) and **Forge explorer progress**.
 
-HMR has three tiers (see `src/dev/DevSessionResume.ts`, `src/apps/game/index.tsx`):
+HMR has three tiers (see `src/dev/DevSessionCheckpoint.ts`, `src/dev/DevSessionResume.ts`, `src/apps/game/index.tsx`):
 
 1. **In-place hot swap** — only React UI shell (`@/apps/game/app`, AppContext) and the `HmrTestProbe` canary.
-2. **Engine-file edits** — cannot hot-swap in place (static singletons, `#private` fields, `instanceof` identity). The HMR status handler snapshots the session to `localStorage` and full-reloads; boot auto-resumes into the same module/position.
-3. **Manual F5** — same snapshot/auto-resume path (continuous 2 s autosave + `beforeunload`). Disable with `?devresume=0`. Upstream `KobaltBlu/KotOR.js` master has **no HMR stack** — browser errors during HMR dev are often branch-only dev infrastructure, not Odyssey engine regressions. See `docs/solutions/runtime-errors/dev-fs-stale-handle-hmr-parity.md`.
+2. **Engine-file edits** — cannot hot-swap in place (static singletons, `#private` fields, `instanceof` identity). The HMR status handler captures an **instance checkpoint** (IndexedDB + localStorage header) and full-reloads; boot restores the logical session. Legacy position-only resume is a degraded fallback.
+3. **Manual Ctrl+R dev refresh** — same instance checkpoint path (rolling 2 s capture + `beforeunload`). Disable with `?devcheckpoint=0` or `?devresume=0`. **F4/F5 remain retail quicksave/quickload** — not dev refresh. Upstream `KobaltBlu/KotOR.js` master has **no HMR stack** — browser errors during HMR dev are often branch-only dev infrastructure, not Odyssey engine regressions. See `docs/solutions/runtime-errors/dev-fs-stale-handle-hmr-parity.md`.
 
 ## Port map (do not mix these)
 
@@ -58,6 +58,9 @@ Green CI **does not** prove manual browser parity. Always run tier 3 when changi
 
 `docs/solutions/` — compound learnings (YAML frontmatter: `module`, `tags`, `problem_type`). Search here before debugging HMR, dev FS, or e2e issues.
 
+`CONCEPTS.md` — shared domain vocabulary (HMR tiers, dev session resume, quick-play); read when orienting to dev/HMR work.
+
+- `developer-experience/engine-hmr-snapshot-reload-resume.md` — three-tier HMR, snapshot-reload-resume
 - `runtime-errors/dev-fs-stale-handle-hmr-parity.md` — stale IndexedDB handle, CI vs manual drift
 - `performance-issues/dev-game-fs-range-reads-and-size-guards.md` — ranged BIF reads, 413 guards
 - `developer-experience/hmr-real-asset-in-module-e2e.md` — real-asset / in-module e2e patterns

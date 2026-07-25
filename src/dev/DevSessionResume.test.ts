@@ -33,6 +33,7 @@ import * as KotOR from '@/apps/game/KotOR';
 import {
   captureDevResumeSnapshot,
   clearDevResumeSnapshot,
+  discardDevResumeSnapshotUnlessInModule,
   installDevSessionResume,
   tryResumeDevSession,
 } from '@/dev/DevSessionResume';
@@ -165,6 +166,21 @@ describe('captureDevResumeSnapshot', () => {
     getPlayerCreatureMock.mockReturnValue(null);
     expect(captureDevResumeSnapshot()).toBe(false);
   });
+
+  it('does not capture while boot resume is in progress', () => {
+    setInModuleState();
+    (window as any).__KOTOR_DEV_RESUME_STATE__ = 'resuming';
+    getPlayerCreatureMock.mockReturnValue(makePlayer());
+    expect(captureDevResumeSnapshot()).toBe(false);
+  });
+
+  it('preserves the attempt counter from an existing snapshot', () => {
+    writeSnapshotToStorage({ attempts: 2 });
+    setInModuleState();
+    getPlayerCreatureMock.mockReturnValue(makePlayer());
+    expect(captureDevResumeSnapshot()).toBe(true);
+    expect(storedSnapshot()?.attempts).toBe(2);
+  });
 });
 
 describe('tryResumeDevSession', () => {
@@ -259,12 +275,32 @@ describe('tryResumeDevSession', () => {
 });
 
 describe('installDevSessionResume', () => {
-  it('installs beforeunload + interval capture exactly once', () => {
+  it('installs beforeunload capture exactly once (no rolling interval)', () => {
     installDevSessionResume();
     installDevSessionResume();
     expect((window as any).addEventListener).toHaveBeenCalledTimes(1);
-    expect((window as any).setInterval).toHaveBeenCalledTimes(1);
+    expect((window as any).setInterval).not.toHaveBeenCalled();
     expect((window as any).__KOTOR_DEV_RESUME_INSTALLED__).toBe(true);
+  });
+
+  it('beforeunload discards stale snapshot when off-module', () => {
+    writeSnapshotToStorage();
+    installDevSessionResume();
+    const calls = (window as any).addEventListener.mock.calls as [string, () => void][];
+    const beforeUnload = calls.find(c => c[0] === 'beforeunload')?.[1];
+    expect(beforeUnload).toBeDefined();
+    beforeUnload!();
+    expect(storedSnapshot()).toBeNull();
+  });
+
+  it('beforeunload captures when in-module', () => {
+    setInModuleState();
+    getPlayerCreatureMock.mockReturnValue(makePlayer());
+    installDevSessionResume();
+    const calls = (window as any).addEventListener.mock.calls as [string, () => void][];
+    const beforeUnload = calls.find(c => c[0] === 'beforeunload')?.[1];
+    beforeUnload!();
+    expect(storedSnapshot()).not.toBeNull();
   });
 });
 
@@ -273,5 +309,20 @@ describe('clearDevResumeSnapshot', () => {
     writeSnapshotToStorage();
     clearDevResumeSnapshot();
     expect(storedSnapshot()).toBeNull();
+  });
+});
+
+describe('discardDevResumeSnapshotUnlessInModule', () => {
+  it('clears a stale snapshot when not in-module', () => {
+    writeSnapshotToStorage();
+    expect(discardDevResumeSnapshotUnlessInModule()).toBeUndefined();
+    expect(storedSnapshot()).toBeNull();
+  });
+
+  it('keeps the snapshot during an in-module session', () => {
+    writeSnapshotToStorage();
+    setInModuleState();
+    discardDevResumeSnapshotUnlessInModule();
+    expect(storedSnapshot()).not.toBeNull();
   });
 });

@@ -19,6 +19,7 @@ import { AnalogInput } from "@/controls/AnalogInput";
 import { TGAObject } from "@/resource/TGAObject";
 import { GameFileSystem } from "@/utility/GameFileSystem";
 import { TURN_SPEED_FAST } from "@/engine/TurnSpeeds";
+import { SaveGame } from "@/engine/SaveGame";
 
 /**
  * IngameControls class.
@@ -802,6 +803,19 @@ export class IngameControls {
       if(GameState.VideoManager.isMoviePlaying()){
         GameState.VideoManager.skipMovie();
       }
+    });
+
+    KeyMapper.setActionProcessor(KeyMapAction.Quicksave, (keymap) => {
+      if (!keymap.keyboardInput?.pressed && !keymap.gamepadInput?.pressed) return;
+      if (GameState.Mode !== EngineMode.INGAME
+        && GameState.Mode !== EngineMode.DIALOG
+        && GameState.Mode !== EngineMode.FREELOOK) return;
+      void SaveGame.QuickSave().catch((e) => console.error('[Quicksave]', e));
+    });
+
+    KeyMapper.setActionProcessor(KeyMapAction.QUICKLOAD, (keymap) => {
+      if (!keymap.keyboardInput?.pressed && !keymap.gamepadInput?.pressed) return;
+      void SaveGame.QuickLoad().catch((e) => console.error('[Quickload]', e));
     });
   }
 

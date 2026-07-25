@@ -85,4 +85,5 @@ KOTOR archives are designed for random access via KEY/BIF/RIM headers read in sm
 
 ## Remaining gaps
 
-- Automated in-module HMR session preservation with real assets in CI — optional local run via `KOTOR_HMR_E2E_MODULE` (see `docs/solutions/developer-experience/hmr-real-asset-in-module-e2e.md`)
+- **CI** still runs synthetic HMR e2e only — F5 and engine-edit reload-resume phases require local `KOTOR_DEV_GAME_DIR` + `KOTOR_HMR_E2E_MODULE` (see `docs/solutions/developer-experience/hmr-real-asset-in-module-e2e.md` and `engine-hmr-snapshot-reload-resume.md`).
+- Live browser matrix on port 8130 (`.cursor/agents/kotor-hmr-verifier.md`) is not automated in CI.

@@ -64,12 +64,20 @@ Key implementation points:
   and the HMR status handler without async hazards.
 - **Resume rides the quick-play path** (`startQuickPlayToModule` from
   `HmrTestBridge`), then restores the player transform. It must wait for
-  `GameState.Ready` **and** `MenuManager.LoadScreen/MenuToolTip` before
-  quick-playing — racing the app's own menu init double-runs
-  `LoadMainGameMenus` and crashes on menu resources (observed:
-  `Resource not found: lplanet_03`).
+  `GameState.Ready`, 2DA tables, `MenuManager.LoadScreen/MenuToolTip`, and
+  `GameState.scene_gui` (`waitForSceneGui`) before loading menus — racing
+  the app's own menu init double-runs `LoadMainGameMenus` and crashes on menu
+  resources (observed: `Resource not found: lplanet_03`).
+- **Stale snapshot hygiene**: on HMR `abort`/`fail`, if capture fails because
+  the player is not in-module, call `discardDevResumeSnapshotUnlessInModule()`
+  before reload so boot does not hijack into an old autosave from the main menu.
+- **Attempt counter**: autosave preserves the existing `attempts` value; capture
+  is skipped while `__KOTOR_DEV_RESUME_STATE__ === 'resuming'`. Failed
+  `localStorage` writes log a one-shot `[DevResume]` console warning.
 - **Crash-loop breaker**: attempts counter persisted *before* the risky load;
   3 strikes clears the snapshot. `?devresume=0` disables resume entirely.
+- **Bootstrap timeout**: `waitForQuickPlayReady` polls up to **180 s**
+  (`BOOTSTRAP_WAIT_MS`) for engine + menus — not a short grace bypass.
 - **Entry self-accept was removed** so engine edits deterministically hit the
   `abort` path instead of re-executing a detached world.
 
@@ -85,10 +93,12 @@ Key implementation points:
 ## Regression coverage
 
 - `src/dev/DevSessionResume.test.ts` — snapshot capture guards, URL kill
-  switch, attempts breaker, transform restore, idempotent install.
+  switch, attempts breaker, transform restore, attempt preservation, skip
+  capture while resuming, discard unless in-module, idempotent install (18 tests).
 - `scripts/hmr-session.e2e.cjs` — `runF5ResumePhase` +
-  `runEngineEditResumePhase` (real-asset in-module mode only; synthetic CI
-  mode skips them).
+  `runEngineEditResumePhase` when `KOTOR_DEV_GAME_DIR` **and**
+  `KOTOR_HMR_E2E_MODULE` are set; synthetic CI mode skips reload-resume phases.
+  Do not load with `?devresume=0` — F5 would inherit disabled resume.
 
 ## Known limitations
 
@@ -96,3 +106,8 @@ Key implementation points:
   module + player transform, not a full savegame. Layering
   `SaveGame.SaveCurrentGame` onto the snapshot cadence is the upgrade path.
 - A resume costs a real module load (~60–80 s on an external drive).
+- **F5 from main menu** after exiting a module normally may still auto-resume
+  the last autosave — `beforeunload` does not discard when capture fails
+  off-module (only HMR abort clears stale snapshots today).
+- Boot resume runs parallel to `GameState.Start()` intro movies; a fast movie
+  failure can race `MainMenu.Start()` against quick-play.

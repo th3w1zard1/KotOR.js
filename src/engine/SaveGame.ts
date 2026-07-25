@@ -852,21 +852,33 @@ export class SaveGame {
    * // Create an autosave
    * await SaveGame.SaveCurrentGame('', 1);
    */
-  static async SaveCurrentGame( name = '', replace_id = 0 ){
+  static async SaveCurrentGame( name = '', replace_id?: number ){
     if(!GameState.module){ return; }
 
     GameState.MenuManager.LoadScreen.open();
     GameState.MenuManager.LoadScreen.showSavingMessage();
 
-    let save_id = replace_id >= 2 ? replace_id : SaveGame.NEXT_SAVE_ID++;
+    let save_id: number;
+    let save_dir_name: string;
+    if (replace_id === 0) {
+      save_id = 0;
+      save_dir_name = '000000 - QUICKSAVE';
+    } else if (replace_id === 1) {
+      save_id = 1;
+      save_dir_name = '000001 - AUTOSAVE';
+    } else if (typeof replace_id === 'number' && replace_id >= 2) {
+      save_id = replace_id;
+      save_dir_name = Utility.PadInt(save_id, 6) + ' - Game' + (save_id - 1);
+    } else {
+      save_id = SaveGame.NEXT_SAVE_ID++;
+      save_dir_name = Utility.PadInt(save_id, 6) + ' - Game' + (save_id - 1);
+    }
+    let save_dir = path.join( SaveGame.base_directory, save_dir_name );
 
     //Prepare SaveGame directory
     if(!(await GameFileSystem.exists(SaveGame.base_directory))){
       await GameFileSystem.mkdir(SaveGame.base_directory);
     }
-
-    let save_dir_name = Utility.PadInt(save_id, 6)+' - Game'+(save_id-1);
-    let save_dir = path.join( SaveGame.base_directory, save_dir_name );
 
     if(!(await GameFileSystem.exists(save_dir))){
       await GameFileSystem.mkdir(save_dir);
@@ -1114,6 +1126,122 @@ export class SaveGame {
     const replaceId = save.getSaveNumber();
     const existingName = save.getSaveName();
     await SaveGame.SaveCurrentGame(existingName, replaceId);
+  }
+
+  /**
+   * Writes the current session to the reserved quicksave slot (000000 - QUICKSAVE).
+   */
+  static async QuickSave(): Promise<boolean> {
+    if (!GameState.module) return false;
+    let quick = SaveGame.saves.find(s => s.getIsQuickSave());
+    if (!quick) {
+      const save_dir_name = '000000 - QUICKSAVE';
+      const base = SaveGame.base_directory;
+      if (!(await GameFileSystem.exists(base))) {
+        await GameFileSystem.mkdir(base);
+      }
+      const save_dir = path.join(base, save_dir_name);
+      if (!(await GameFileSystem.exists(save_dir))) {
+        await GameFileSystem.mkdir(save_dir);
+      }
+      quick = new SaveGame(save_dir_name);
+      SaveGame.AddSaveGame(quick);
+    }
+    await SaveGame.OverwriteSave(quick);
+    return true;
+  }
+
+  /**
+   * Loads the quicksave slot if it exists on disk.
+   */
+  static async QuickLoad(): Promise<boolean> {
+    const quick = SaveGame.saves.find(s => s.getIsQuickSave());
+    if (!quick) return false;
+    const savPath = path.join(quick.directory, 'SAVEGAME.sav');
+    if (!(await GameFileSystem.exists(savPath))) return false;
+    if (GameState.module) {
+      GameState.module.dispose();
+      GameState.module = undefined;
+    }
+    await quick.load();
+    return true;
+  }
+
+  /**
+   * Scratch folder for dev instance checkpoint export (virtual FS — NOT retail Saves/).
+   * Uses the same Odyssey serialization pipeline as SaveGame internally.
+   */
+  static DEV_CHECKPOINT_SCRATCH_DIR = '__kotor_dev_checkpoint/scratch';
+
+  /** Restore target for dev instance checkpoint hydration after reload. */
+  static DEV_CHECKPOINT_RESTORE_DIR = '__kotor_dev_checkpoint/restore';
+
+  /**
+   * Serializes live engine state into Odyssey-format artifacts for dev instance
+   * checkpoint capture. Does not touch retail save slots or save UI.
+   */
+  static async exportInstanceStateArtifacts(): Promise<Record<string, Uint8Array> | null> {
+    if (!GameState.module) return null;
+
+    const dir = SaveGame.DEV_CHECKPOINT_SCRATCH_DIR;
+    try {
+      if (await GameFileSystem.exists(dir)) {
+        await GameFileSystem.rmdir(dir, { recursive: true });
+      }
+      await GameFileSystem.mkdir(dir);
+
+      await GameState.module.save();
+      await CurrentGame.ExportToSaveFolder(dir);
+      await SaveGame.ExportSaveNFO(dir, '');
+      await SaveGame.ExportGlobalVars(dir);
+      await GameState.PartyManager.Export(dir);
+
+      const names = await GameFileSystem.readdir(dir);
+      const out: Record<string, Uint8Array> = {};
+      for (const name of names) {
+        const filePath = path.join(dir, name);
+        out[name] = await GameFileSystem.readFile(filePath);
+      }
+      return Object.keys(out).length > 0 ? out : null;
+    } catch (e) {
+      console.error('[SaveGame] exportInstanceStateArtifacts failed', e);
+      return null;
+    }
+  }
+
+  /**
+   * Hydrates a running session from dev checkpoint artifacts (dev reload path only).
+   * Not quickload — does not read from retail Saves/ or show load UI.
+   */
+  static async loadFromInstanceStateArtifacts(
+    artifacts: Record<string, Uint8Array>,
+  ): Promise<boolean> {
+    const dir = SaveGame.DEV_CHECKPOINT_RESTORE_DIR;
+    try {
+      if (await GameFileSystem.exists(dir)) {
+        await GameFileSystem.rmdir(dir, { recursive: true });
+      }
+      await GameFileSystem.mkdir(dir);
+
+      for (const [name, bytes] of Object.entries(artifacts)) {
+        await GameFileSystem.writeFile(path.join(dir, name), bytes);
+      }
+
+      const checkpointSave = new SaveGame('');
+      checkpointSave.folderName = path.basename(dir);
+      checkpointSave.directory = dir;
+      await checkpointSave.loadNFO();
+
+      if (GameState.module) {
+        GameState.module.dispose();
+        GameState.module = undefined;
+      }
+      await checkpointSave.load();
+      return true;
+    } catch (e) {
+      console.error('[SaveGame] loadFromInstanceStateArtifacts failed', e);
+      return false;
+    }
   }
   
   /** The directory path for the current save game (used internally) */

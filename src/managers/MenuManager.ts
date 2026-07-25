@@ -98,7 +98,7 @@ export class MenuManager {
   static Add(menu: GameMenu){
     if(!menu) return;
 
-    MenuManager.MenuToolTip.hide();
+    MenuManager.MenuToolTip?.hide();
     
     if(!menu.isOverlayGUI){
       //Hide the current top most menu in the list before adding the new Menu
